@@ -115,7 +115,10 @@ class Bomb {
 
         if (this.progress >= 1) {
             this.progress = 1;
-            this.exploded = true;
+            if (!this.exploded) {
+                this.exploded = true;
+                audioManager.playExplosionGround();
+            }
             this.y = this.targetY; // snap to target
             this.x = this.targetX;
         }

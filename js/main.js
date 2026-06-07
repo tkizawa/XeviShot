@@ -42,6 +42,9 @@ window.addEventListener('load', function() {
         document.getElementById('score').innerText = '0';
         document.getElementById('lives').innerText = '3';
         
+        // Play start game jingle
+        audioManager.playStartJingle();
+        
         if (animationId) cancelAnimationFrame(animationId);
         animate();
     }
@@ -57,6 +60,7 @@ window.addEventListener('load', function() {
                 currentState = 'GAMEOVER';
                 gameOverScreen.classList.remove('hidden');
                 finalScoreEl.innerText = game.score;
+                audioManager.playGameOver();
             } else {
                 animationId = requestAnimationFrame(animate);
             }

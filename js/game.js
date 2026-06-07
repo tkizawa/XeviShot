@@ -33,6 +33,7 @@ class Game {
             if (this.player.cooldownAir <= 0) {
                 this.bullets.push(new Bullet(this.player.x, this.player.y - this.player.height / 2));
                 this.player.cooldownAir = 10; // Frames between shots
+                audioManager.playLaser();
             }
         }
 
@@ -43,6 +44,7 @@ class Game {
                 const targetY = this.player.y - this.player.reticleDistance;
                 this.bombs.push(new Bomb(this.player.x, this.player.y, targetX, targetY));
                 this.player.cooldownGround = 60; // Slower fire rate for bombs
+                audioManager.playBombLaunch();
             }
         }
 
@@ -105,6 +107,7 @@ class Game {
                     enemy.markedForDeletion = true;
                     this.score += 100;
                     this.updateScoreDisplay();
+                    audioManager.playExplosionAir();
                 }
             });
         });
@@ -145,6 +148,9 @@ class Game {
     loseLife() {
         this.lives--;
         this.updateLivesDisplay();
+        
+        // Play player hit sound
+        audioManager.playPlayerHit();
         
         // Clear enemies nearby or reset player pos
         this.enemies = this.enemies.filter(e => e.y < this.player.y - 100);
