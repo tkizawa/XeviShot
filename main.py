@@ -33,6 +33,7 @@ def main():
                     game = Game(width, height)
                     current_state = 'PLAYING'
                     audio_manager.play('start_jingle')
+                    audio_manager.play_bgm()
 
         screen.fill((0, 0, 0))
         
@@ -74,6 +75,7 @@ def main():
             
             if game.game_over:
                 current_state = 'GAMEOVER'
+                audio_manager.stop_bgm()
                 blink_timer = 0
                 
         elif current_state == 'GAMEOVER':

@@ -28,6 +28,8 @@ class AudioManager:
         self.sounds['player_hit'] = self._create_sound(self._gen_player_hit())
         self.sounds['start_jingle'] = self._create_sound(self._gen_start_jingle())
         self.sounds['game_over'] = self._create_sound(self._gen_game_over())
+        self.sounds['bgm'] = self._create_sound(self._gen_bgm())
+        self.sounds['bgm'].set_volume(0.4)
 
     def _create_sound(self, samples):
         # Convert to 16-bit PCM WAV in memory
@@ -126,8 +128,114 @@ class AudioManager:
             samples.extend(self._gen_tone(f, d, 'triangle', 0.08))
         return samples
 
+    def _gen_bgm(self):
+        sample_rate = 44100
+        bpm = 130
+        step_duration = 60.0 / (bpm * 4)
+        step_samples = int(sample_rate * step_duration)
+        total_steps = 64
+        total_samples = step_samples * total_steps
+        samples = [0.0] * total_samples
+        
+        melody = [
+            # Bar 1 (Am)
+            76, 0, 72, 76, 0, 81, 0, 76, 0, 74, 72, 71, 0, 72, 74, 0,
+            # Bar 2 (F)
+            72, 0, 69, 72, 0, 77, 0, 72, 0, 71, 69, 67, 0, 69, 71, 0,
+            # Bar 3 (C)
+            67, 0, 64, 67, 0, 72, 0, 67, 0, 65, 64, 62, 0, 64, 65, 0,
+            # Bar 4 (G)
+            62, 0, 59, 62, 0, 67, 0, 71, 0, 69, 67, 66, 0, 67, 69, 0
+        ]
+        
+        bass = [
+            # Bar 1 (Am)
+            45, 0, 45, 45, 0, 45, 45, 0, 45, 0, 45, 45, 0, 45, 45, 0,
+            # Bar 2 (F)
+            41, 0, 41, 41, 0, 41, 41, 0, 41, 0, 41, 41, 0, 41, 41, 0,
+            # Bar 3 (C)
+            36, 0, 36, 36, 0, 36, 36, 0, 36, 0, 36, 36, 0, 36, 36, 0,
+            # Bar 4 (G)
+            43, 0, 43, 43, 0, 43, 43, 0, 43, 0, 43, 43, 0, 43, 43, 0
+        ]
+        
+        drums = [
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0,
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0,
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0,
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0
+        ]
+        
+        for s in range(total_steps):
+            start_idx = s * step_samples
+            
+            m_note = melody[s]
+            m_freq = 0.0
+            if m_note > 0:
+                m_freq = 440.0 * (2.0 ** ((m_note - 69) / 12.0))
+                
+            b_note = bass[s]
+            b_freq = 0.0
+            if b_note > 0:
+                b_freq = 440.0 * (2.0 ** ((b_note - 69) / 12.0))
+                
+            drum_type = drums[s]
+            
+            for i in range(step_samples):
+                t = i / sample_rate
+                idx = start_idx + i
+                
+                # Melody: Square wave with exponential decay
+                if m_freq > 0.0:
+                    phase = 2 * math.pi * m_freq * t
+                    val = 1.0 if math.sin(phase) > 0 else -1.0
+                    vol = 0.03 * math.exp(-6.0 * t)
+                    samples[idx] += val * vol
+                    
+                # Bass: Triangle wave with decay
+                if b_freq > 0.0:
+                    phase = b_freq * t
+                    val = 2.0 * abs(2.0 * (phase - math.floor(phase + 0.5))) - 1.0
+                    vol = 0.05 * math.exp(-8.0 * t)
+                    samples[idx] += val * vol
+                    
+                # Drums
+                if drum_type == 1: # Kick
+                    if t < 0.08:
+                        phase = 10 * math.pi * (1.0 - math.exp(-30.0 * t))
+                        val = math.sin(phase)
+                        vol = 0.10 * math.exp(-15.0 * t)
+                        samples[idx] += val * vol
+                elif drum_type == 2: # Snare
+                    if t < 0.12:
+                        noise = random.uniform(-1.0, 1.0)
+                        vol_noise = 0.03 * math.exp(-20.0 * t)
+                        samples[idx] += noise * vol_noise
+                        
+                        phase = 180.0 * t
+                        tri = 2.0 * abs(2.0 * (phase - math.floor(phase + 0.5))) - 1.0
+                        vol_tri = 0.02 * math.exp(-15.0 * t)
+                        samples[idx] += tri * vol_tri
+                elif drum_type == 3: # Hi-hat
+                    if t < 0.03:
+                        noise = random.uniform(-1.0, 1.0)
+                        vol = 0.015 * math.exp(-80.0 * t)
+                        samples[idx] += noise * vol
+                        
+        return samples
+
     def play(self, name):
         if self.sound_enabled and name in self.sounds:
             self.sounds[name].play()
+
+    def play_bgm(self):
+        if self.sound_enabled and 'bgm' in self.sounds:
+            self.stop_bgm()
+            self.bgm_channel = self.sounds['bgm'].play(loops=-1)
+
+    def stop_bgm(self):
+        if hasattr(self, 'bgm_channel') and self.bgm_channel:
+            self.bgm_channel.stop()
+            self.bgm_channel = None
 
 audio_manager = AudioManager()
