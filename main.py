@@ -118,6 +118,7 @@ def main():
             if game.game_over:
                 current_state = 'GAMEOVER'
                 audio_manager.stop_bgm()
+                audio_manager.stop_charge()
                 blink_timer = 0
                 
         elif current_state == 'GAMEOVER':

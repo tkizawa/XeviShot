@@ -1,5 +1,5 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon
 from audio import audio_manager
 import random
 
@@ -32,11 +32,16 @@ class Game:
         self.background.update()
         self.player.update(self.keys, self.width, self.height)
 
-        if self.keys.get(pygame.K_x):
-            if self.player.cooldown_air <= 0:
-                self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
-                self.player.cooldown_air = 10
-                audio_manager.play('laser')
+        if getattr(self.player, 'shoot_normal', False):
+            self.player.shoot_normal = False
+            self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
+            self.player.cooldown_air = 10
+            audio_manager.play('laser')
+            
+        if getattr(self.player, 'shoot_wave', False):
+            self.player.shoot_wave = False
+            self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2))
+            audio_manager.play('wave_cannon')
                 
         if self.keys.get(pygame.K_z):
             if self.player.cooldown_ground <= 0:
@@ -93,7 +98,8 @@ class Game:
         for bullet in self.bullets:
             for enemy in [e for e in self.enemies if e.type == 'air']:
                 if self.is_colliding(bullet, enemy):
-                    bullet.marked_for_deletion = True
+                    if not isinstance(bullet, WaveCannon):
+                        bullet.marked_for_deletion = True
                     enemy.marked_for_deletion = True
                     self.score += 100
                     audio_manager.play('explosion_air')
@@ -123,6 +129,12 @@ class Game:
     def lose_life(self):
         self.lives -= 1
         audio_manager.play('player_hit')
+        
+        # Reset player charging state
+        self.player.charge_timer = 0
+        self.player.was_x_pressed = False
+        self.player.played_complete = False
+        audio_manager.stop_charge()
         
         self.enemies = [e for e in self.enemies if e.y >= self.player.y - 100]
         self.player.x = self.width / 2

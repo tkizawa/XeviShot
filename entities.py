@@ -14,6 +14,13 @@ class Player:
         self.cooldown_air = 0
         self.cooldown_ground = 0
         self.reticle_distance = 120
+        # Charge Hadouho states
+        self.charge_timer = 0
+        self.charge_max = 60
+        self.was_x_pressed = False
+        self.shoot_normal = False
+        self.shoot_wave = False
+        self.played_complete = False
 
     def update(self, keys, canvas_width, canvas_height):
         if keys.get(pygame.K_UP): self.y -= self.speed
@@ -27,7 +34,47 @@ class Player:
         if self.cooldown_air > 0: self.cooldown_air -= 1
         if self.cooldown_ground > 0: self.cooldown_ground -= 1
 
+        # Hadouho charging input logic
+        x_pressed = keys.get(pygame.K_x, False)
+        
+        if x_pressed:
+            if not self.was_x_pressed:
+                if self.cooldown_air <= 0:
+                    self.shoot_normal = True
+            
+            self.charge_timer = min(self.charge_max, self.charge_timer + 1)
+            
+            if self.charge_timer == 1:
+                audio_manager.play_charge()
+            elif self.charge_timer == self.charge_max:
+                if not getattr(self, 'played_complete', False):
+                    audio_manager.play('charge_complete')
+                    self.played_complete = True
+        else:
+            if self.was_x_pressed:
+                audio_manager.stop_charge()
+                if self.charge_timer >= self.charge_max:
+                    self.shoot_wave = True
+                self.charge_timer = 0
+                self.played_complete = False
+                
+        self.was_x_pressed = x_pressed
+
     def draw(self, surface):
+        # Draw charging aura if charging
+        if self.charge_timer > 0:
+            charge_ratio = self.charge_timer / self.charge_max
+            pulse = math.sin(pygame.time.get_ticks() * 0.02) * 5
+            radius = int(25 * charge_ratio + 5 + pulse)
+            
+            if charge_ratio >= 1.0:
+                color = (255, 255, 255) if (pygame.time.get_ticks() // 50) % 2 == 0 else (0, 255, 255)
+                pygame.draw.circle(surface, color, (int(self.x), int(self.y)), radius, 2)
+                pygame.draw.circle(surface, (0, 170, 255), (int(self.x), int(self.y)), radius - 4, 1)
+            else:
+                color = (0, 100, 255)
+                pygame.draw.circle(surface, color, (int(self.x), int(self.y)), radius, 1)
+
         points = [
             (self.x, self.y - self.height / 2),
             (self.x + self.width / 2, self.y + self.height / 2),
@@ -63,6 +110,26 @@ class Bullet:
 
     def draw(self, surface):
         pygame.draw.rect(surface, self.color, (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
+
+class WaveCannon:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 32
+        self.height = 32
+        self.speed = 12
+        self.color = (0, 255, 255)
+        self.marked_for_deletion = False
+
+    def update(self):
+        self.y -= self.speed
+        if self.y < -50: self.marked_for_deletion = True
+
+    def draw(self, surface):
+        pulse = int(math.sin(pygame.time.get_ticks() * 0.05) * 4)
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x), int(self.y)), 12 + pulse)
+        pygame.draw.circle(surface, (0, 170, 255), (int(self.x), int(self.y)), 22 + pulse, 3)
+        pygame.draw.ellipse(surface, (0, 255, 255), (self.x - 30, self.y - 8, 60, 16), 2)
 
 class Bomb:
     def __init__(self, start_x, start_y, target_x, target_y):

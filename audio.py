@@ -30,6 +30,9 @@ class AudioManager:
         self.sounds['game_over'] = self._create_sound(self._gen_game_over())
         self.sounds['bgm'] = self._create_sound(self._gen_bgm())
         self.sounds['bgm'].set_volume(0.4)
+        self.sounds['charge'] = self._create_sound(self._gen_charge())
+        self.sounds['charge_complete'] = self._create_sound(self._gen_charge_complete())
+        self.sounds['wave_cannon'] = self._create_sound(self._gen_wave_cannon())
 
     def _create_sound(self, samples):
         # Convert to 16-bit PCM WAV in memory
@@ -237,5 +240,48 @@ class AudioManager:
         if hasattr(self, 'bgm_channel') and self.bgm_channel:
             self.bgm_channel.stop()
             self.bgm_channel = None
+
+    def play_charge(self):
+        if self.sound_enabled and 'charge' in self.sounds:
+            self.stop_charge()
+            self.charge_channel = self.sounds['charge'].play()
+
+    def stop_charge(self):
+        if hasattr(self, 'charge_channel') and self.charge_channel:
+            self.charge_channel.stop()
+            self.charge_channel = None
+
+    def _gen_charge(self):
+        samples = []
+        sample_rate = 44100
+        duration = 1.0
+        for i in range(int(sample_rate * duration)):
+            t = i / sample_rate
+            freq = 220.0 + 660.0 * (t / duration)
+            phase = 2 * math.pi * freq * t
+            val = math.sin(phase)
+            vol = 0.08 * (t / duration)
+            samples.append(val * vol)
+        return samples
+
+    def _gen_charge_complete(self):
+        samples = []
+        notes = [(880.0, 0.05), (1046.5, 0.05), (1318.5, 0.1)]
+        for f, d in notes:
+            samples.extend(self._gen_tone(f, d, 'square', 0.04))
+        return samples
+
+    def _gen_wave_cannon(self):
+        samples = []
+        sample_rate = 44100
+        duration = 0.6
+        for i in range(int(sample_rate * duration)):
+            t = i / sample_rate
+            freq = 800.0 - 600.0 * (t / duration) + 50.0 * math.sin(2.0 * math.pi * 50.0 * t)
+            phase = 2.0 * math.pi * freq * t
+            val = 0.7 * (1.0 if math.sin(phase) > 0.0 else -1.0) + 0.3 * random.uniform(-1.0, 1.0)
+            vol = 0.25 * (1.0 - t / duration)
+            samples.append(val * vol)
+        return samples
 
 audio_manager = AudioManager()
