@@ -43,7 +43,7 @@ class Game:
             self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2))
             audio_manager.play('wave_cannon')
                 
-        if self.keys.get(pygame.K_z):
+        if self.keys.get(pygame.K_x) or self.keys.get(pygame.K_c):
             if self.player.cooldown_ground <= 0:
                 target_x = self.player.x
                 target_y = self.player.y - self.player.reticle_distance
@@ -132,7 +132,7 @@ class Game:
         
         # Reset player charging state
         self.player.charge_timer = 0
-        self.player.was_x_pressed = False
+        self.player.was_z_pressed = False
         self.player.played_complete = False
         audio_manager.stop_charge()
         

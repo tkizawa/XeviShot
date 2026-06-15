@@ -55,10 +55,10 @@ def main():
             p1 = small_font.render("Press ARROW KEYS to move", True, (255, 255, 255))
             screen.blit(p1, (width/2 - p1.get_width()/2, height/2))
             
-            p2 = small_font.render("X - Zapper (Air Attack)", True, (255, 255, 255))
+            p2 = small_font.render("Z - Zapper (Air Attack) / X - Blaster (Ground)", True, (255, 255, 255))
             screen.blit(p2, (width/2 - p2.get_width()/2, height/2 + 30))
             
-            p3 = small_font.render("Z - Blaster (Ground Attack)", True, (255, 255, 255))
+            p3 = small_font.render("C - Fire Both", True, (255, 255, 255))
             screen.blit(p3, (width/2 - p3.get_width()/2, height/2 + 60))
             
             if joystick:
@@ -78,6 +78,7 @@ def main():
             right = keys_pressed[pygame.K_RIGHT]
             x_key = keys_pressed[pygame.K_x]
             z_key = keys_pressed[pygame.K_z]
+            c_key = keys_pressed[pygame.K_c]
             
             if joystick:
                 axis_x = joystick.get_axis(0)
@@ -94,9 +95,9 @@ def main():
                     down = True
                     
                 if joystick.get_button(0):  # A Button
-                    x_key = True
-                if joystick.get_button(1):  # B Button
                     z_key = True
+                if joystick.get_button(1):  # B Button
+                    x_key = True
                     
             game.keys = {
                 pygame.K_UP: up,
@@ -104,7 +105,8 @@ def main():
                 pygame.K_LEFT: left,
                 pygame.K_RIGHT: right,
                 pygame.K_x: x_key,
-                pygame.K_z: z_key
+                pygame.K_z: z_key,
+                pygame.K_c: c_key
             }
             game.update()
             game.draw(screen)

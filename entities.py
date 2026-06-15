@@ -17,7 +17,7 @@ class Player:
         # Charge Hadouho states
         self.charge_timer = 0
         self.charge_max = 60
-        self.was_x_pressed = False
+        self.was_z_pressed = False
         self.shoot_normal = False
         self.shoot_wave = False
         self.played_complete = False
@@ -35,10 +35,10 @@ class Player:
         if self.cooldown_ground > 0: self.cooldown_ground -= 1
 
         # Hadouho charging input logic
-        x_pressed = keys.get(pygame.K_x, False)
+        z_pressed = keys.get(pygame.K_z, False) or keys.get(pygame.K_c, False)
         
-        if x_pressed:
-            if not self.was_x_pressed:
+        if z_pressed:
+            if not self.was_z_pressed:
                 if self.cooldown_air <= 0:
                     self.shoot_normal = True
             
@@ -51,14 +51,14 @@ class Player:
                     audio_manager.play('charge_complete')
                     self.played_complete = True
         else:
-            if self.was_x_pressed:
+            if self.was_z_pressed:
                 audio_manager.stop_charge()
                 if self.charge_timer >= self.charge_max:
                     self.shoot_wave = True
                 self.charge_timer = 0
                 self.played_complete = False
                 
-        self.was_x_pressed = x_pressed
+        self.was_z_pressed = z_pressed
 
     def draw(self, surface):
         # Draw charging aura if charging
