@@ -111,6 +111,12 @@ class Game:
                     enemy.marked_for_deletion = True
                     self.score += 100
                     audio_manager.play('explosion_air')
+                    
+            if isinstance(bullet, WaveCannon):
+                for eb in self.enemy_bullets:
+                    if self.is_colliding(bullet, eb):
+                        eb.marked_for_deletion = True
+                        self.score += 10
 
         for bomb in [b for b in self.bombs if b.exploded]:
             for enemy in [e for e in self.enemies if e.type == 'ground']:
