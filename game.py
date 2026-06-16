@@ -1,5 +1,5 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet
 from audio import audio_manager
 import random
 
@@ -12,6 +12,7 @@ class Game:
         self.keys = {}
         
         self.bullets = []
+        self.enemy_bullets = []
         self.bombs = []
         self.enemies = []
         
@@ -65,9 +66,15 @@ class Game:
 
         for b in self.bullets: b.update()
         for b in self.bombs: b.update()
-        for e in self.enemies: e.update()
+        for e in self.enemies:
+            e.update()
+            if getattr(e, 'shoot_now', False):
+                e.shoot_now = False
+                self.enemy_bullets.append(EnemyBullet(e.x, e.y + e.height / 2))
+        for eb in self.enemy_bullets: eb.update()
 
         self.bullets = [b for b in self.bullets if not b.marked_for_deletion]
+        self.enemy_bullets = [eb for eb in self.enemy_bullets if not eb.marked_for_deletion]
         self.bombs = [b for b in self.bombs if not b.marked_for_deletion]
         self.enemies = [e for e in self.enemies if not e.marked_for_deletion]
 
@@ -88,6 +95,7 @@ class Game:
             if e.type == 'air': e.draw(surface)
             
         for b in self.bullets: b.draw(surface)
+        for eb in self.enemy_bullets: eb.draw(surface)
 
     def spawn_enemy(self, type_):
         x = random.uniform(30, self.width - 30)
@@ -120,6 +128,11 @@ class Game:
                     enemy.marked_for_deletion = True
                     self.lose_life()
 
+            for eb in self.enemy_bullets:
+                if self.is_colliding(self.player, eb):
+                    eb.marked_for_deletion = True
+                    self.lose_life()
+
     def is_colliding(self, rect1, rect2):
         return (rect1.x - rect1.width/2 < rect2.x + rect2.width/2 and
                 rect1.x + rect1.width/2 > rect2.x - rect2.width/2 and
@@ -137,6 +150,7 @@ class Game:
         audio_manager.stop_charge()
         
         self.enemies = [e for e in self.enemies if e.y >= self.player.y - 100]
+        self.enemy_bullets.clear()
         self.player.x = self.width / 2
         self.player.y = self.height - 100
         

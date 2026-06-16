@@ -111,6 +111,23 @@ class Bullet:
     def draw(self, surface):
         pygame.draw.rect(surface, self.color, (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
 
+class EnemyBullet:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 6
+        self.height = 6
+        self.speed = 5
+        self.color = (255, 100, 100)
+        self.marked_for_deletion = False
+
+    def update(self):
+        self.y += self.speed
+        if self.y > 700: self.marked_for_deletion = True
+
+    def draw(self, surface):
+        pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), int(self.width / 2))
+
 class WaveCannon:
     def __init__(self, x, y):
         self.x = x
@@ -179,6 +196,8 @@ class Enemy:
         self.y = y
         self.type = type_
         self.marked_for_deletion = False
+        self.shoot_timer = random.randint(30, 120)
+        self.shoot_now = False
         
         if type_ == 'air':
             self.width = 24
@@ -194,6 +213,11 @@ class Enemy:
 
     def update(self):
         if self.type == 'air':
+            self.shoot_timer -= 1
+            if self.shoot_timer <= 0:
+                self.shoot_now = True
+                self.shoot_timer = random.randint(60, 180)
+
             if self.movement_type == 0:
                 self.y += self.speed
             elif self.movement_type == 1:
