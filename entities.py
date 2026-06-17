@@ -21,6 +21,7 @@ class Player:
         self.shoot_normal = False
         self.shoot_wave = False
         self.played_complete = False
+        self.shield_count = 0
 
     def update(self, keys, canvas_width, canvas_height):
         if keys.get(pygame.K_UP): self.y -= self.speed
@@ -82,6 +83,14 @@ class Player:
             (self.x - self.width / 2, self.y + self.height / 2)
         ]
         pygame.draw.polygon(surface, self.color, points)
+
+        if getattr(self, 'shield_count', 0) > 0:
+            pygame.draw.circle(surface, (0, 255, 255), (int(self.x), int(self.y)), int(self.width / 2 + 8), 2)
+            for i in range(self.shield_count):
+                angle = i * (2 * math.pi / self.shield_count) + pygame.time.get_ticks() * 0.005
+                hx = self.x + math.cos(angle) * (self.width / 2 + 8)
+                hy = self.y + math.sin(angle) * (self.width / 2 + 8)
+                pygame.draw.circle(surface, (255, 255, 255), (int(hx), int(hy)), 3)
 
         self.draw_reticle(surface)
 
@@ -286,3 +295,21 @@ class Background:
             
         if len(points) > 1:
             pygame.draw.lines(surface, (0, 0, 170), False, points, 30)
+
+class ShieldCapsule:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 16
+        self.height = 16
+        self.speed = 1.5
+        self.marked_for_deletion = False
+
+    def update(self):
+        self.y += self.speed
+        if self.y > 700: self.marked_for_deletion = True
+
+    def draw(self, surface):
+        pygame.draw.ellipse(surface, (0, 200, 255), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
+

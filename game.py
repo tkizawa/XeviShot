@@ -1,5 +1,5 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule
 from audio import audio_manager
 import random
 
@@ -15,6 +15,7 @@ class Game:
         self.enemy_bullets = []
         self.bombs = []
         self.enemies = []
+        self.items = []
         
         self.score = 0
         self.lives = 3
@@ -72,11 +73,13 @@ class Game:
                 e.shoot_now = False
                 self.enemy_bullets.append(EnemyBullet(e.x, e.y + e.height / 2))
         for eb in self.enemy_bullets: eb.update()
+        for item in self.items: item.update()
 
         self.bullets = [b for b in self.bullets if not b.marked_for_deletion]
         self.enemy_bullets = [eb for eb in self.enemy_bullets if not eb.marked_for_deletion]
         self.bombs = [b for b in self.bombs if not b.marked_for_deletion]
         self.enemies = [e for e in self.enemies if not e.marked_for_deletion]
+        self.items = [i for i in self.items if not i.marked_for_deletion]
 
         self.check_collisions()
 
@@ -87,6 +90,7 @@ class Game:
             if e.type == 'ground': e.draw(surface)
             
         for b in self.bombs: b.draw(surface)
+        for item in self.items: item.draw(surface)
         
         if not self.game_over:
             self.player.draw(surface)
@@ -108,9 +112,12 @@ class Game:
                 if self.is_colliding(bullet, enemy):
                     if not isinstance(bullet, WaveCannon):
                         bullet.marked_for_deletion = True
-                    enemy.marked_for_deletion = True
-                    self.score += 100
-                    audio_manager.play('explosion_air')
+                    if not enemy.marked_for_deletion:
+                        enemy.marked_for_deletion = True
+                        if random.random() <= 0.10:
+                            self.items.append(ShieldCapsule(enemy.x, enemy.y))
+                        self.score += 100
+                        audio_manager.play('explosion_air')
                     
             if isinstance(bullet, WaveCannon):
                 for eb in self.enemy_bullets:
@@ -126,24 +133,38 @@ class Game:
                 if distance < (20 + bomb.explosion_timer) + enemy.width / 2:
                     if not enemy.marked_for_deletion:
                         enemy.marked_for_deletion = True
+                        if random.random() <= 0.10:
+                            self.items.append(ShieldCapsule(enemy.x, enemy.y))
                         self.score += 300
 
         if not self.game_over:
+            for item in self.items:
+                if self.is_colliding(self.player, item):
+                    item.marked_for_deletion = True
+                    self.player.shield_count = 5
+
             for enemy in [e for e in self.enemies if e.type == 'air']:
                 if self.is_colliding(self.player, enemy):
                     enemy.marked_for_deletion = True
-                    self.lose_life()
+                    self.hit_player()
 
             for eb in self.enemy_bullets:
                 if self.is_colliding(self.player, eb):
                     eb.marked_for_deletion = True
-                    self.lose_life()
+                    self.hit_player()
 
     def is_colliding(self, rect1, rect2):
         return (rect1.x - rect1.width/2 < rect2.x + rect2.width/2 and
                 rect1.x + rect1.width/2 > rect2.x - rect2.width/2 and
                 rect1.y - rect1.height/2 < rect2.y + rect2.height/2 and
                 rect1.y + rect1.height/2 > rect2.y - rect2.height/2)
+
+    def hit_player(self):
+        if getattr(self.player, 'shield_count', 0) > 0:
+            self.player.shield_count -= 1
+            audio_manager.play('player_hit')
+        else:
+            self.lose_life()
 
     def lose_life(self):
         self.lives -= 1
