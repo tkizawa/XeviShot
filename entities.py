@@ -18,9 +18,12 @@ class Player:
         self.charge_timer = 0
         self.charge_max = 60
         self.was_z_pressed = False
+        self.charge_max2 = 600
         self.shoot_normal = False
         self.shoot_wave = False
+        self.shoot_diffusion_wave = False
         self.played_complete = False
+        self.played_complete2 = False
         self.shield_count = 0
         self.weapon_level = 1
 
@@ -44,7 +47,7 @@ class Player:
                 if self.cooldown_air <= 0:
                     self.shoot_normal = True
             
-            self.charge_timer = min(self.charge_max, self.charge_timer + 1)
+            self.charge_timer = min(getattr(self, 'charge_max2', 600), self.charge_timer + 1)
             
             if self.charge_timer == 1:
                 audio_manager.play_charge()
@@ -52,24 +55,37 @@ class Player:
                 if not getattr(self, 'played_complete', False):
                     audio_manager.play('charge_complete')
                     self.played_complete = True
+            elif self.charge_timer == getattr(self, 'charge_max2', 600):
+                if not getattr(self, 'played_complete2', False):
+                    audio_manager.play('charge_complete')
+                    self.played_complete2 = True
         else:
             if self.was_z_pressed:
                 audio_manager.stop_charge()
-                if self.charge_timer >= self.charge_max:
+                if self.charge_timer >= getattr(self, 'charge_max2', 600):
+                    self.shoot_diffusion_wave = True
+                elif self.charge_timer >= self.charge_max:
                     self.shoot_wave = True
                 self.charge_timer = 0
                 self.played_complete = False
+                self.played_complete2 = False
                 
         self.was_z_pressed = z_pressed
 
     def draw(self, surface):
         # Draw charging aura if charging
         if self.charge_timer > 0:
-            charge_ratio = self.charge_timer / self.charge_max
-            pulse = math.sin(pygame.time.get_ticks() * 0.02) * 5
-            radius = int(25 * charge_ratio + 5 + pulse)
+            charge_ratio = min(1.0, self.charge_timer / self.charge_max)
+            charge_ratio2 = max(0.0, (self.charge_timer - self.charge_max) / (getattr(self, 'charge_max2', 600) - self.charge_max))
             
-            if charge_ratio >= 1.0:
+            pulse = math.sin(pygame.time.get_ticks() * 0.02) * 5
+            radius = int(25 * charge_ratio + 20 * charge_ratio2 + 5 + pulse)
+            
+            if self.charge_timer >= getattr(self, 'charge_max2', 600):
+                color = (255, 255, 0) if (pygame.time.get_ticks() // 50) % 2 == 0 else (255, 0, 0)
+                pygame.draw.circle(surface, color, (int(self.x), int(self.y)), radius, 3)
+                pygame.draw.circle(surface, (255, 150, 0), (int(self.x), int(self.y)), radius - 6, 2)
+            elif charge_ratio >= 1.0:
                 color = (255, 255, 255) if (pygame.time.get_ticks() // 50) % 2 == 0 else (0, 255, 255)
                 pygame.draw.circle(surface, color, (int(self.x), int(self.y)), radius, 2)
                 pygame.draw.circle(surface, (0, 170, 255), (int(self.x), int(self.y)), radius - 4, 1)
@@ -150,18 +166,21 @@ class EnemyBullet:
         pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), int(self.width / 2))
 
 class WaveCannon:
-    def __init__(self, x, y):
+    def __init__(self, x, y, vx=0, vy=None):
         self.x = x
         self.y = y
         self.width = 32
         self.height = 32
         self.speed = 12
+        self.vx = vx
+        self.vy = vy if vy is not None else -self.speed
         self.color = (0, 255, 255)
         self.marked_for_deletion = False
 
     def update(self):
-        self.y -= self.speed
-        if self.y < -50: self.marked_for_deletion = True
+        self.x += self.vx
+        self.y += self.vy
+        if self.y < -50 or self.x < -50 or self.x > 530: self.marked_for_deletion = True
 
     def draw(self, surface):
         pulse = int(math.sin(pygame.time.get_ticks() * 0.05) * 4)
