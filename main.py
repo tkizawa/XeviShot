@@ -6,6 +6,7 @@ from audio import audio_manager
 def main():
     pygame.init()
     audio_manager.init()
+    audio_manager.play_opening_bgm()
     
     pygame.joystick.init()
     joystick = None
@@ -41,6 +42,7 @@ def main():
                     joystick = None
             elif event.type == pygame.KEYDOWN or event.type == pygame.JOYBUTTONDOWN:
                 if current_state == 'TITLE' or current_state == 'GAMEOVER':
+                    audio_manager.stop_opening_bgm()
                     game = Game(width, height)
                     current_state = 'PLAYING'
                     audio_manager.play('start_jingle')
@@ -121,6 +123,7 @@ def main():
                 current_state = 'GAMEOVER'
                 audio_manager.stop_bgm()
                 audio_manager.stop_charge()
+                audio_manager.play_opening_bgm()
                 blink_timer = 0
                 
         elif current_state == 'GAMEOVER':
