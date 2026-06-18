@@ -2,6 +2,7 @@ import pygame
 from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule
 from audio import audio_manager
 import random
+import math
 
 class Game:
     def __init__(self, width, height):
@@ -36,7 +37,16 @@ class Game:
 
         if getattr(self.player, 'shoot_normal', False):
             self.player.shoot_normal = False
-            if getattr(self.player, 'weapon_level', 1) >= 2:
+            weapon_level = getattr(self.player, 'weapon_level', 1)
+            if weapon_level >= 3:
+                angles = [-25, -8, 8, 25]
+                offsets = [-15, -5, 5, 15]
+                for angle, offset in zip(angles, offsets):
+                    rad = math.radians(angle)
+                    vx = 10 * math.sin(rad)
+                    vy = -10 * math.cos(rad)
+                    self.bullets.append(Bullet(self.player.x + offset, self.player.y - self.player.height / 2, vx, vy))
+            elif weapon_level == 2:
                 self.bullets.append(Bullet(self.player.x - 10, self.player.y - self.player.height / 2))
                 self.bullets.append(Bullet(self.player.x + 10, self.player.y - self.player.height / 2))
             else:
@@ -154,7 +164,7 @@ class Game:
                     if isinstance(item, ShieldCapsule):
                         self.player.shield_count = 5
                     elif isinstance(item, WeaponCapsule):
-                        self.player.weapon_level = 2
+                        self.player.weapon_level = min(3, getattr(self.player, 'weapon_level', 1) + 1)
 
             for enemy in [e for e in self.enemies if e.type == 'air']:
                 if self.is_colliding(self.player, enemy):

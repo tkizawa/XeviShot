@@ -105,21 +105,32 @@ class Player:
         pygame.draw.rect(surface, red, (reticle_x - 8, reticle_y - 8, 16, 16), 2)
 
 class Bullet:
-    def __init__(self, x, y):
+    def __init__(self, x, y, vx=0, vy=-10):
         self.x = x
         self.y = y
         self.width = 4
         self.height = 12
-        self.speed = 10
+        self.vx = vx
+        self.vy = vy
         self.color = (255, 255, 0)
         self.marked_for_deletion = False
 
     def update(self):
-        self.y -= self.speed
-        if self.y < 0: self.marked_for_deletion = True
+        self.x += self.vx
+        self.y += self.vy
+        if self.y < -50 or self.y > 690 or self.x < -50 or self.x > 530:
+            self.marked_for_deletion = True
 
     def draw(self, surface):
-        pygame.draw.rect(surface, self.color, (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
+        speed = math.hypot(self.vx, self.vy)
+        if speed > 0:
+            dx = self.vx / speed
+            dy = self.vy / speed
+            start_pos = (int(self.x - dx * self.height / 2), int(self.y - dy * self.height / 2))
+            end_pos = (int(self.x + dx * self.height / 2), int(self.y + dy * self.height / 2))
+            pygame.draw.line(surface, self.color, start_pos, end_pos, self.width)
+        else:
+            pygame.draw.rect(surface, self.color, (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
 
 class EnemyBullet:
     def __init__(self, x, y):
