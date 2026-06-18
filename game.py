@@ -1,5 +1,5 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule
 from audio import audio_manager
 import random
 
@@ -36,7 +36,11 @@ class Game:
 
         if getattr(self.player, 'shoot_normal', False):
             self.player.shoot_normal = False
-            self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
+            if getattr(self.player, 'weapon_level', 1) >= 2:
+                self.bullets.append(Bullet(self.player.x - 10, self.player.y - self.player.height / 2))
+                self.bullets.append(Bullet(self.player.x + 10, self.player.y - self.player.height / 2))
+            else:
+                self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
             self.player.cooldown_air = 10
             audio_manager.play('laser')
             
@@ -114,8 +118,11 @@ class Game:
                         bullet.marked_for_deletion = True
                     if not enemy.marked_for_deletion:
                         enemy.marked_for_deletion = True
-                        if random.random() <= 0.10:
+                        rand_drop = random.random()
+                        if rand_drop <= 0.10:
                             self.items.append(ShieldCapsule(enemy.x, enemy.y))
+                        elif rand_drop <= 0.20:
+                            self.items.append(WeaponCapsule(enemy.x, enemy.y))
                         self.score += 100
                         audio_manager.play('explosion_air')
                     
@@ -133,15 +140,21 @@ class Game:
                 if distance < (20 + bomb.explosion_timer) + enemy.width / 2:
                     if not enemy.marked_for_deletion:
                         enemy.marked_for_deletion = True
-                        if random.random() <= 0.10:
+                        rand_drop = random.random()
+                        if rand_drop <= 0.10:
                             self.items.append(ShieldCapsule(enemy.x, enemy.y))
+                        elif rand_drop <= 0.20:
+                            self.items.append(WeaponCapsule(enemy.x, enemy.y))
                         self.score += 300
 
         if not self.game_over:
             for item in self.items:
                 if self.is_colliding(self.player, item):
                     item.marked_for_deletion = True
-                    self.player.shield_count = 5
+                    if isinstance(item, ShieldCapsule):
+                        self.player.shield_count = 5
+                    elif isinstance(item, WeaponCapsule):
+                        self.player.weapon_level = 2
 
             for enemy in [e for e in self.enemies if e.type == 'air']:
                 if self.is_colliding(self.player, enemy):
@@ -174,6 +187,7 @@ class Game:
         self.player.charge_timer = 0
         self.player.was_z_pressed = False
         self.player.played_complete = False
+        self.player.weapon_level = 1
         audio_manager.stop_charge()
         
         self.enemies = [e for e in self.enemies if e.y >= self.player.y - 100]

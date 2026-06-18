@@ -22,6 +22,7 @@ class Player:
         self.shoot_wave = False
         self.played_complete = False
         self.shield_count = 0
+        self.weapon_level = 1
 
     def update(self, keys, canvas_width, canvas_height):
         if keys.get(pygame.K_UP): self.y -= self.speed
@@ -311,5 +312,22 @@ class ShieldCapsule:
 
     def draw(self, surface):
         pygame.draw.ellipse(surface, (0, 200, 255), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
+
+class WeaponCapsule:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 16
+        self.height = 16
+        self.speed = 1.5
+        self.marked_for_deletion = False
+
+    def update(self):
+        self.y += self.speed
+        if self.y > 700: self.marked_for_deletion = True
+
+    def draw(self, surface):
+        pygame.draw.ellipse(surface, (255, 50, 50), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
         pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
 
