@@ -58,6 +58,17 @@ class Game:
             self.player.shoot_wave = False
             self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2))
             audio_manager.play('wave_cannon')
+            
+        if getattr(self.player, 'shoot_diffusion_wave', False):
+            self.player.shoot_diffusion_wave = False
+            angles = [-30, -15, 0, 15, 30]
+            base_speed = 12
+            for angle in angles:
+                rad = math.radians(angle)
+                vx = base_speed * math.sin(rad)
+                vy = -base_speed * math.cos(rad)
+                self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2, vx=vx, vy=vy))
+            audio_manager.play('wave_cannon')
                 
         if self.keys.get(pygame.K_x) or self.keys.get(pygame.K_c):
             if self.player.cooldown_ground <= 0:
@@ -197,6 +208,8 @@ class Game:
         self.player.charge_timer = 0
         self.player.was_z_pressed = False
         self.player.played_complete = False
+        self.player.played_complete2 = False
+        self.player.shoot_diffusion_wave = False
         self.player.weapon_level = 1
         audio_manager.stop_charge()
         
