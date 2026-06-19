@@ -26,6 +26,7 @@ class Player:
         self.played_complete2 = False
         self.shield_count = 0
         self.weapon_level = 1
+        self.rumble_trigger = None
 
     def update(self, keys, canvas_width, canvas_height):
         if keys.get(pygame.K_UP): self.y -= self.speed
@@ -55,10 +56,12 @@ class Player:
                 if not getattr(self, 'played_complete', False):
                     audio_manager.play('charge_complete')
                     self.played_complete = True
+                    self.rumble_trigger = 'charge_complete'
             elif self.charge_timer == getattr(self, 'charge_max2', 600):
                 if not getattr(self, 'played_complete2', False):
                     audio_manager.play('charge_complete')
                     self.played_complete2 = True
+                    self.rumble_trigger = 'charge_complete2'
         else:
             if self.was_z_pressed:
                 audio_manager.stop_charge()

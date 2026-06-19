@@ -5,9 +5,10 @@ import random
 import math
 
 class Game:
-    def __init__(self, width, height):
+    def __init__(self, width, height, joystick=None):
         self.width = width
         self.height = height
+        self.joystick = joystick
         self.player = Player(self.width / 2, self.height - 100)
         self.background = Background(self.width, self.height)
         self.keys = {}
@@ -28,12 +29,27 @@ class Game:
         self.ground_spawn_timer = 0
         self.ground_spawn_interval = 180
 
+    def trigger_rumble(self, low, high, duration):
+        if self.joystick and hasattr(self.joystick, 'rumble'):
+            try:
+                self.joystick.rumble(low, high, duration)
+            except Exception as e:
+                pass
+
     def update(self):
         if self.game_over:
             return
 
         self.background.update()
         self.player.update(self.keys, self.width, self.height)
+
+        if getattr(self.player, 'rumble_trigger', None):
+            trigger = self.player.rumble_trigger
+            self.player.rumble_trigger = None
+            if trigger == 'charge_complete':
+                self.trigger_rumble(0.0, 0.6, 120)
+            elif trigger == 'charge_complete2':
+                self.trigger_rumble(0.0, 1.0, 200)
 
         if getattr(self.player, 'shoot_normal', False):
             self.player.shoot_normal = False
@@ -58,6 +74,7 @@ class Game:
             self.player.shoot_wave = False
             self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2))
             audio_manager.play('wave_cannon')
+            self.trigger_rumble(0.6, 0.4, 250)
             
         if getattr(self.player, 'shoot_diffusion_wave', False):
             self.player.shoot_diffusion_wave = False
@@ -69,6 +86,7 @@ class Game:
                 vy = -base_speed * math.cos(rad)
                 self.bullets.append(WaveCannon(self.player.x, self.player.y - self.player.height / 2, vx=vx, vy=vy))
             audio_manager.play('wave_cannon')
+            self.trigger_rumble(0.9, 0.7, 450)
                 
         if self.keys.get(pygame.K_x) or self.keys.get(pygame.K_c):
             if self.player.cooldown_ground <= 0:
@@ -91,7 +109,11 @@ class Game:
             self.ground_spawn_timer = 0
 
         for b in self.bullets: b.update()
-        for b in self.bombs: b.update()
+        for b in self.bombs:
+            was_exploded = b.exploded
+            b.update()
+            if b.exploded and not was_exploded:
+                self.trigger_rumble(0.4, 0.2, 150)
         for e in self.enemies:
             e.update()
             if getattr(e, 'shoot_now', False):
@@ -197,12 +219,14 @@ class Game:
         if getattr(self.player, 'shield_count', 0) > 0:
             self.player.shield_count -= 1
             audio_manager.play('player_hit')
+            self.trigger_rumble(0.6, 0.6, 250)
         else:
             self.lose_life()
 
     def lose_life(self):
         self.lives -= 1
         audio_manager.play('player_hit')
+        self.trigger_rumble(1.0, 1.0, 500)
         
         # Reset player charging state
         self.player.charge_timer = 0

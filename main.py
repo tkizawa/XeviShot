@@ -35,15 +35,20 @@ def main():
             elif event.type == pygame.JOYDEVICEADDED:
                 if joystick is None:
                     joystick = pygame.joystick.Joystick(event.device_index)
+                    joystick.init()
                     print(f"Joystick connected: {joystick.get_name()}")
+                    if game:
+                        game.joystick = joystick
             elif event.type == pygame.JOYDEVICEREMOVED:
                 if joystick and joystick.get_instance_id() == event.instance_id:
                     print("Joystick disconnected")
                     joystick = None
+                    if game:
+                        game.joystick = None
             elif event.type == pygame.KEYDOWN or event.type == pygame.JOYBUTTONDOWN:
                 if current_state == 'TITLE' or current_state == 'GAMEOVER':
                     audio_manager.stop_opening_bgm()
-                    game = Game(width, height)
+                    game = Game(width, height, joystick=joystick)
                     current_state = 'PLAYING'
                     audio_manager.play('start_jingle')
                     audio_manager.play_bgm()
