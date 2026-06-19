@@ -152,18 +152,21 @@ class Bullet:
             pygame.draw.rect(surface, self.color, (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
 
 class EnemyBullet:
-    def __init__(self, x, y):
+    def __init__(self, x, y, vx=0, vy=5):
         self.x = x
         self.y = y
         self.width = 6
         self.height = 6
-        self.speed = 5
+        self.vx = vx
+        self.vy = vy
         self.color = (255, 100, 100)
         self.marked_for_deletion = False
 
     def update(self):
-        self.y += self.speed
-        if self.y > 700: self.marked_for_deletion = True
+        self.x += self.vx
+        self.y += self.vy
+        if self.y > 700 or self.y < -50 or self.x < -50 or self.x > 530:
+            self.marked_for_deletion = True
 
     def draw(self, surface):
         pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), int(self.width / 2))
@@ -248,6 +251,15 @@ class Enemy:
             self.color = (255, 0, 0)
             self.speed = 2
             self.movement_type = random.randint(0, 2)
+        elif type_ == 'phaeon':
+            self.width = 24
+            self.height = 24
+            self.color = (255, 255, 0)
+            self.speed = 4
+            self.state = 'APPROACH'
+            self.target_y = random.uniform(224, 320)
+            self.retreat_vx = random.choice([-2.0, 0.0, 2.0])
+            self.retreat_vy = -6.0
         else:
             self.width = 32
             self.height = 32
@@ -269,17 +281,55 @@ class Enemy:
             elif self.movement_type == 2:
                 self.y += self.speed
                 self.x += self.speed * (-0.5 if self.x > 240 else 0.5)
+
+            if self.y > 700:
+                self.marked_for_deletion = True
+        elif self.type == 'phaeon':
+            if self.state == 'APPROACH':
+                self.y += self.speed
+                if self.y >= self.target_y:
+                    self.state = 'ATTACK'
+            elif self.state == 'ATTACK':
+                self.shoot_now = True
+                self.state = 'RETREAT'
+            elif self.state == 'RETREAT':
+                self.x += self.retreat_vx
+                self.y += self.retreat_vy
+
+            if self.y < -60 or self.y > 700 or self.x < -60 or self.x > 540:
+                self.marked_for_deletion = True
         else:
             self.y += self.speed
-
-        if self.y > 700:
-            self.marked_for_deletion = True
+            if self.y > 700:
+                self.marked_for_deletion = True
 
     def draw(self, surface):
         if self.type == 'air':
             rect = (self.x - self.width/2, self.y - self.height/4, self.width, self.height/2)
             pygame.draw.ellipse(surface, self.color, rect)
             pygame.draw.circle(surface, (0, 255, 0), (int(self.x), int(self.y - 4)), int(self.width/4))
+        elif self.type == 'phaeon':
+            if self.state == 'APPROACH':
+                vx, vy = 0.0, self.speed
+            else:
+                vx, vy = self.retreat_vx, self.retreat_vy
+
+            speed = math.hypot(vx, vy)
+            if speed > 0:
+                dx = vx / speed
+                dy = vy / speed
+            else:
+                dx, dy = 0.0, 1.0
+
+            p1 = (self.x + dx * 16, self.y + dy * 16)
+            p2 = (self.x - dy * 14 + dx * 4, self.y + dx * 14 + dy * 4)
+            p3 = (self.x - dx * 10, self.y - dy * 10)
+            p4 = (self.x + dy * 14 + dx * 4, self.y - dx * 14 + dy * 4)
+
+            pygame.draw.polygon(surface, self.color, [p1, p2, p3, p4])
+
+            cockpit_pos = (int(self.x + dx * 6), int(self.y + dy * 6))
+            pygame.draw.circle(surface, (255, 0, 0), cockpit_pos, 3)
         else:
             pygame.draw.rect(surface, self.color, (self.x - self.width/2, self.y - self.height/2, self.width, self.height))
             pygame.draw.circle(surface, (255, 0, 0), (int(self.x), int(self.y)), 8)

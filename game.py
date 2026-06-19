@@ -29,6 +29,10 @@ class Game:
         self.ground_spawn_timer = 0
         self.ground_spawn_interval = 180
 
+        self.frame_count = 0
+        self.phaeon_spawn_timer = 0
+        self.phaeon_spawn_interval = 300
+
     def trigger_rumble(self, low, high, duration):
         if self.joystick and hasattr(self.joystick, 'rumble'):
             try:
@@ -40,6 +44,7 @@ class Game:
         if self.game_over:
             return
 
+        self.frame_count += 1
         self.background.update()
         self.player.update(self.keys, self.width, self.height)
 
@@ -108,6 +113,18 @@ class Game:
             self.spawn_enemy('ground')
             self.ground_spawn_timer = 0
 
+        # Phaeon spawning logic after 60 seconds (3600 frames)
+        if self.frame_count > 3600:
+            self.phaeon_spawn_timer += 1
+            if self.phaeon_spawn_timer > self.phaeon_spawn_interval:
+                self.phaeon_spawn_timer = 0
+                num_phaeons = random.randint(1, 3)
+                base_x = random.uniform(80, self.width - 80)
+                for i in range(num_phaeons):
+                    spawn_x = max(30, min(self.width - 30, base_x + (i - (num_phaeons - 1) / 2) * 40))
+                    spawn_y = -50 - i * 30
+                    self.enemies.append(Enemy(spawn_x, spawn_y, 'phaeon'))
+
         for b in self.bullets: b.update()
         for b in self.bombs:
             was_exploded = b.exploded
@@ -118,7 +135,20 @@ class Game:
             e.update()
             if getattr(e, 'shoot_now', False):
                 e.shoot_now = False
-                self.enemy_bullets.append(EnemyBullet(e.x, e.y + e.height / 2))
+                if e.type == 'phaeon':
+                    dx = self.player.x - e.x
+                    dy = self.player.y - e.y
+                    dist = math.hypot(dx, dy)
+                    if dist > 0:
+                        bullet_speed = 6.0
+                        vx = (dx / dist) * bullet_speed
+                        vy = (dy / dist) * bullet_speed
+                    else:
+                        vx = 0.0
+                        vy = 6.0
+                    self.enemy_bullets.append(EnemyBullet(e.x, e.y, vx, vy))
+                else:
+                    self.enemy_bullets.append(EnemyBullet(e.x, e.y + e.height / 2))
         for eb in self.enemy_bullets: eb.update()
         for item in self.items: item.update()
 
@@ -143,7 +173,7 @@ class Game:
             self.player.draw(surface)
             
         for e in self.enemies:
-            if e.type == 'air': e.draw(surface)
+            if e.type in ('air', 'phaeon'): e.draw(surface)
             
         for b in self.bullets: b.draw(surface)
         for eb in self.enemy_bullets: eb.draw(surface)
@@ -155,7 +185,7 @@ class Game:
 
     def check_collisions(self):
         for bullet in self.bullets:
-            for enemy in [e for e in self.enemies if e.type == 'air']:
+            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
                 if self.is_colliding(bullet, enemy):
                     if not isinstance(bullet, WaveCannon):
                         bullet.marked_for_deletion = True
@@ -166,7 +196,10 @@ class Game:
                             self.items.append(ShieldCapsule(enemy.x, enemy.y))
                         elif rand_drop <= 0.20:
                             self.items.append(WeaponCapsule(enemy.x, enemy.y))
-                        self.score += 100
+                        if enemy.type == 'phaeon':
+                            self.score += 500
+                        else:
+                            self.score += 100
                         audio_manager.play('explosion_air')
                     
             if isinstance(bullet, WaveCannon):
@@ -199,7 +232,7 @@ class Game:
                     elif isinstance(item, WeaponCapsule):
                         self.player.weapon_level = min(3, getattr(self.player, 'weapon_level', 1) + 1)
 
-            for enemy in [e for e in self.enemies if e.type == 'air']:
+            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
                 if self.is_colliding(self.player, enemy):
                     enemy.marked_for_deletion = True
                     self.hit_player()
