@@ -26,6 +26,7 @@ class Player:
         self.played_complete2 = False
         self.shield_count = 0
         self.weapon_level = 1
+        self.has_laser = False
         self.rumble_trigger = None
 
     def update(self, keys, canvas_width, canvas_height):
@@ -388,6 +389,7 @@ class ShieldCapsule:
         self.height = 16
         self.speed = 1.5
         self.marked_for_deletion = False
+        self.font = pygame.font.SysFont(None, 14)
 
     def update(self):
         self.y += self.speed
@@ -396,6 +398,8 @@ class ShieldCapsule:
     def draw(self, surface):
         pygame.draw.ellipse(surface, (0, 200, 255), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
         pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
+        text = self.font.render("S", True, (0, 0, 0))
+        surface.blit(text, (self.x - text.get_width() / 2, self.y - text.get_height() / 2 + 1))
 
 class WeaponCapsule:
     def __init__(self, x, y):
@@ -405,6 +409,7 @@ class WeaponCapsule:
         self.height = 16
         self.speed = 1.5
         self.marked_for_deletion = False
+        self.font = pygame.font.SysFont(None, 14)
 
     def update(self):
         self.y += self.speed
@@ -413,4 +418,47 @@ class WeaponCapsule:
     def draw(self, surface):
         pygame.draw.ellipse(surface, (255, 50, 50), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
         pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
+        text = self.font.render("W", True, (0, 0, 0))
+        surface.blit(text, (self.x - text.get_width() / 2, self.y - text.get_height() / 2 + 1))
+
+class LaserCapsule:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 16
+        self.height = 16
+        self.speed = 1.5
+        self.marked_for_deletion = False
+        self.font = pygame.font.SysFont(None, 14)
+
+    def update(self):
+        self.y += self.speed
+        if self.y > 700: self.marked_for_deletion = True
+
+    def draw(self, surface):
+        pygame.draw.ellipse(surface, (50, 255, 50), (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height))
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x - 2), int(self.y - 2)), 3)
+        text = self.font.render("L", True, (0, 0, 0))
+        surface.blit(text, (self.x - text.get_width() / 2, self.y - text.get_height() / 2 + 1))
+
+class LaserBullet:
+    def __init__(self, x, y, vx=0, vy=-18):
+        self.x = x
+        self.y = y
+        self.width = 6
+        self.height = 60
+        self.vx = vx
+        self.vy = vy
+        self.marked_for_deletion = False
+
+    def update(self):
+        self.x += self.vx
+        self.y += self.vy
+        if self.y < -50 or self.y > 690 or self.x < -50 or self.x > 530:
+            self.marked_for_deletion = True
+
+    def draw(self, surface):
+        # Draw a sleek laser line with a glowing outline (green) and white core
+        pygame.draw.line(surface, (0, 200, 0), (int(self.x), int(self.y - self.height / 2)), (int(self.x), int(self.y + self.height / 2)), self.width)
+        pygame.draw.line(surface, (255, 255, 255), (int(self.x), int(self.y - self.height / 2 + 3)), (int(self.x), int(self.y + self.height / 2 - 3)), 2)
 

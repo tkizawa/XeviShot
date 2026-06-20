@@ -1,5 +1,5 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule, LaserCapsule, LaserBullet
 from audio import audio_manager
 import random
 import math
@@ -58,21 +58,25 @@ class Game:
 
         if getattr(self.player, 'shoot_normal', False):
             self.player.shoot_normal = False
-            weapon_level = getattr(self.player, 'weapon_level', 1)
-            if weapon_level >= 3:
-                angles = [-25, -8, 8, 25]
-                offsets = [-15, -5, 5, 15]
-                for angle, offset in zip(angles, offsets):
-                    rad = math.radians(angle)
-                    vx = 10 * math.sin(rad)
-                    vy = -10 * math.cos(rad)
-                    self.bullets.append(Bullet(self.player.x + offset, self.player.y - self.player.height / 2, vx, vy))
-            elif weapon_level == 2:
-                self.bullets.append(Bullet(self.player.x - 10, self.player.y - self.player.height / 2))
-                self.bullets.append(Bullet(self.player.x + 10, self.player.y - self.player.height / 2))
+            if getattr(self.player, 'has_laser', False):
+                self.bullets.append(LaserBullet(self.player.x, self.player.y - self.player.height / 2))
+                self.player.cooldown_air = 12
             else:
-                self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
-            self.player.cooldown_air = 10
+                weapon_level = getattr(self.player, 'weapon_level', 1)
+                if weapon_level >= 3:
+                    angles = [-25, -8, 8, 25]
+                    offsets = [-15, -5, 5, 15]
+                    for angle, offset in zip(angles, offsets):
+                        rad = math.radians(angle)
+                        vx = 10 * math.sin(rad)
+                        vy = -10 * math.cos(rad)
+                        self.bullets.append(Bullet(self.player.x + offset, self.player.y - self.player.height / 2, vx, vy))
+                elif weapon_level == 2:
+                    self.bullets.append(Bullet(self.player.x - 10, self.player.y - self.player.height / 2))
+                    self.bullets.append(Bullet(self.player.x + 10, self.player.y - self.player.height / 2))
+                else:
+                    self.bullets.append(Bullet(self.player.x, self.player.y - self.player.height / 2))
+                self.player.cooldown_air = 10
             audio_manager.play('laser')
             
         if getattr(self.player, 'shoot_wave', False):
@@ -187,7 +191,7 @@ class Game:
         for bullet in self.bullets:
             for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
                 if self.is_colliding(bullet, enemy):
-                    if not isinstance(bullet, WaveCannon):
+                    if not isinstance(bullet, (WaveCannon, LaserBullet)):
                         bullet.marked_for_deletion = True
                     if not enemy.marked_for_deletion:
                         enemy.marked_for_deletion = True
@@ -196,6 +200,8 @@ class Game:
                             self.items.append(ShieldCapsule(enemy.x, enemy.y))
                         elif rand_drop <= 0.20:
                             self.items.append(WeaponCapsule(enemy.x, enemy.y))
+                        elif rand_drop <= 0.30:
+                            self.items.append(LaserCapsule(enemy.x, enemy.y))
                         if enemy.type == 'phaeon':
                             self.score += 500
                         else:
@@ -221,6 +227,8 @@ class Game:
                             self.items.append(ShieldCapsule(enemy.x, enemy.y))
                         elif rand_drop <= 0.20:
                             self.items.append(WeaponCapsule(enemy.x, enemy.y))
+                        elif rand_drop <= 0.30:
+                            self.items.append(LaserCapsule(enemy.x, enemy.y))
                         self.score += 300
 
         if not self.game_over:
@@ -230,7 +238,10 @@ class Game:
                     if isinstance(item, ShieldCapsule):
                         self.player.shield_count = 5
                     elif isinstance(item, WeaponCapsule):
+                        self.player.has_laser = False
                         self.player.weapon_level = min(3, getattr(self.player, 'weapon_level', 1) + 1)
+                    elif isinstance(item, LaserCapsule):
+                        self.player.has_laser = True
 
             for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
                 if self.is_colliding(self.player, enemy):
@@ -268,6 +279,7 @@ class Game:
         self.player.played_complete2 = False
         self.player.shoot_diffusion_wave = False
         self.player.weapon_level = 1
+        self.player.has_laser = False
         audio_manager.stop_charge()
         
         self.enemies = [e for e in self.enemies if e.y >= self.player.y - 100]
