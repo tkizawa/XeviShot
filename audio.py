@@ -32,6 +32,8 @@ class AudioManager:
         self.sounds['bgm'].set_volume(0.4)
         self.sounds['opening_bgm'] = self._create_sound(self._gen_opening_bgm())
         self.sounds['opening_bgm'].set_volume(0.4)
+        self.sounds['boss_bgm'] = self._create_sound(self._gen_boss_bgm())
+        self.sounds['boss_bgm'].set_volume(0.4)
         self.sounds['charge'] = self._create_sound(self._gen_charge())
         self.sounds['charge_complete'] = self._create_sound(self._gen_charge_complete())
         self.sounds['wave_cannon'] = self._create_sound(self._gen_wave_cannon())
@@ -238,10 +240,18 @@ class AudioManager:
             self.stop_bgm()
             self.bgm_channel = self.sounds['bgm'].play(loops=-1)
 
+    def play_boss_bgm(self):
+        if self.sound_enabled and 'boss_bgm' in self.sounds:
+            self.stop_bgm()
+            self.boss_bgm_channel = self.sounds['boss_bgm'].play(loops=-1)
+
     def stop_bgm(self):
         if hasattr(self, 'bgm_channel') and self.bgm_channel:
             self.bgm_channel.stop()
             self.bgm_channel = None
+        if hasattr(self, 'boss_bgm_channel') and self.boss_bgm_channel:
+            self.boss_bgm_channel.stop()
+            self.boss_bgm_channel = None
 
     def play_charge(self):
         if self.sound_enabled and 'charge' in self.sounds:
@@ -390,6 +400,95 @@ class AudioManager:
             val = 0.7 * (1.0 if math.sin(phase) > 0.0 else -1.0) + 0.3 * random.uniform(-1.0, 1.0)
             vol = 0.25 * (1.0 - t / duration)
             samples.append(val * vol)
+        return samples
+
+    def _gen_boss_bgm(self):
+        sample_rate = 44100
+        bpm = 100
+        step_duration = 60.0 / (bpm * 4)
+        step_samples = int(sample_rate * step_duration)
+        total_steps = 32
+        total_samples = step_samples * total_steps
+        samples = [0.0] * total_samples
+        
+        melody = [
+            # Bar 1 (creepy diminished/chromatic)
+            72, 0, 73, 0, 78, 0, 77, 0, 72, 73, 78, 77, 84, 0, 83, 0,
+            # Bar 2
+            72, 0, 73, 0, 78, 0, 77, 0, 84, 83, 78, 77, 73, 72, 0, 0
+        ]
+        
+        bass = [
+            # Bar 1 (ominous heavy bass)
+            36, 0, 36, 36, 37, 0, 37, 37, 42, 0, 42, 42, 41, 41, 0, 0,
+            # Bar 2
+            36, 0, 36, 36, 37, 0, 37, 37, 42, 0, 42, 42, 41, 37, 36, 0
+        ]
+        
+        drums = [
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0,
+            1, 0, 3, 0, 2, 0, 3, 0, 1, 0, 3, 0, 2, 0, 3, 0
+        ]
+        
+        for s in range(total_steps):
+            start_idx = s * step_samples
+            
+            m_note = melody[s]
+            m_freq = 0.0
+            if m_note > 0:
+                m_freq = 440.0 * (2.0 ** ((m_note - 69) / 12.0))
+                
+            b_note = bass[s]
+            b_freq = 0.0
+            if b_note > 0:
+                b_freq = 440.0 * (2.0 ** ((b_note - 69) / 12.0))
+                
+            drum_type = drums[s]
+            
+            for i in range(step_samples):
+                t = i / sample_rate
+                idx = start_idx + i
+                
+                # Melody: Dissonant square wave with vibrato
+                if m_freq > 0.0:
+                    vib = 1.0 + 0.015 * math.sin(2.0 * math.pi * 8.0 * t)
+                    phase = 2 * math.pi * (m_freq * vib) * t
+                    val = 1.0 if math.sin(phase) > 0 else -1.0
+                    vol = 0.025 * math.exp(-4.0 * t)
+                    samples[idx] += val * vol
+                    
+                # Bass: Low detuned triangle waves
+                if b_freq > 0.0:
+                    phase1 = b_freq * t
+                    val1 = 2.0 * abs(2.0 * (phase1 - math.floor(phase1 + 0.5))) - 1.0
+                    phase2 = b_freq * 1.01 * t
+                    val2 = 2.0 * abs(2.0 * (phase2 - math.floor(phase2 + 0.5))) - 1.0
+                    vol = 0.06 * math.exp(-6.0 * t)
+                    samples[idx] += (val1 + val2) * 0.5 * vol
+                    
+                # Drums
+                if drum_type == 1:
+                    if t < 0.15:
+                        phase = 8 * math.pi * (1.0 - math.exp(-20.0 * t))
+                        val = math.sin(phase)
+                        vol = 0.12 * math.exp(-8.0 * t)
+                        samples[idx] += val * vol
+                elif drum_type == 2:
+                    if t < 0.15:
+                        noise = random.uniform(-1.0, 1.0)
+                        vol_noise = 0.025 * math.exp(-15.0 * t)
+                        samples[idx] += noise * vol_noise
+                        
+                        phase = 140.0 * t
+                        tri = 2.0 * abs(2.0 * (phase - math.floor(phase + 0.5))) - 1.0
+                        vol_tri = 0.015 * math.exp(-12.0 * t)
+                        samples[idx] += tri * vol_tri
+                elif drum_type == 3:
+                    if t < 0.04:
+                        noise = random.uniform(-1.0, 1.0)
+                        vol = 0.01 * math.exp(-70.0 * t)
+                        samples[idx] += noise * vol
+                        
         return samples
 
 audio_manager = AudioManager()

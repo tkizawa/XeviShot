@@ -46,9 +46,10 @@ def main():
                     if game:
                         game.joystick = None
             elif event.type == pygame.KEYDOWN or event.type == pygame.JOYBUTTONDOWN:
-                if current_state == 'TITLE' or current_state == 'GAMEOVER':
+                if current_state in ('TITLE', 'GAMEOVER', 'CLEAR'):
                     audio_manager.stop_opening_bgm()
-                    game = Game(width, height, joystick=joystick)
+                    initial_score = game.score if (game and current_state == 'CLEAR') else 0
+                    game = Game(width, height, joystick=joystick, initial_score=initial_score)
                     current_state = 'PLAYING'
                     audio_manager.play('start_jingle')
                     audio_manager.play_bgm()
@@ -113,7 +114,8 @@ def main():
                 pygame.K_RIGHT: right,
                 pygame.K_x: x_key,
                 pygame.K_z: z_key,
-                pygame.K_c: c_key
+                pygame.K_c: c_key,
+                pygame.K_t: keys_pressed[pygame.K_t]
             }
             game.update()
             game.draw(screen)
@@ -126,6 +128,12 @@ def main():
             
             if game.game_over:
                 current_state = 'GAMEOVER'
+                audio_manager.stop_bgm()
+                audio_manager.stop_charge()
+                audio_manager.play_opening_bgm()
+                blink_timer = 0
+            elif getattr(game, 'stage_clear', False):
+                current_state = 'CLEAR'
                 audio_manager.stop_bgm()
                 audio_manager.stop_charge()
                 audio_manager.play_opening_bgm()
@@ -148,6 +156,26 @@ def main():
             blink_timer += 1
             if blink_timer % 60 < 30:
                 restart_text = "Press ANY BUTTON to Restart" if joystick else "Press ANY KEY to Restart"
+                rs_surf = small_font.render(restart_text, True, (0, 255, 0))
+                screen.blit(rs_surf, (width/2 - rs_surf.get_width()/2, height/2 + 60))
+
+        elif current_state == 'CLEAR':
+            game.draw(screen)
+            
+            overlay = pygame.Surface((width, height))
+            overlay.set_alpha(150)
+            overlay.fill((0, 0, 0))
+            screen.blit(overlay, (0, 0))
+            
+            go_surf = font.render("STAGE CLEAR", True, (0, 255, 0))
+            screen.blit(go_surf, (width/2 - go_surf.get_width()/2, height/3))
+            
+            fs_surf = small_font.render(f"FINAL SCORE: {game.score}", True, (255, 255, 255))
+            screen.blit(fs_surf, (width/2 - fs_surf.get_width()/2, height/2))
+            
+            blink_timer += 1
+            if blink_timer % 60 < 30:
+                restart_text = "Press ANY BUTTON to Play Again" if joystick else "Press ANY KEY to Play Again"
                 rs_surf = small_font.render(restart_text, True, (0, 255, 0))
                 screen.blit(rs_surf, (width/2 - rs_surf.get_width()/2, height/2 + 60))
 

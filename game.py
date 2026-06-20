@@ -1,11 +1,11 @@
 import pygame
-from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule, LaserCapsule, LaserBullet
+from entities import Player, Background, Bullet, Bomb, Enemy, WaveCannon, EnemyBullet, ShieldCapsule, WeaponCapsule, LaserCapsule, LaserBullet, Boss
 from audio import audio_manager
 import random
 import math
 
 class Game:
-    def __init__(self, width, height, joystick=None):
+    def __init__(self, width, height, joystick=None, initial_score=0):
         self.width = width
         self.height = height
         self.joystick = joystick
@@ -19,9 +19,12 @@ class Game:
         self.enemies = []
         self.items = []
         
-        self.score = 0
+        self.score = initial_score
         self.lives = 3
         self.game_over = False
+        self.boss_active = False
+        self.boss_spawned = False
+        self.stage_clear = False
         
         self.enemy_spawn_timer = 0
         self.enemy_spawn_interval = 60
@@ -41,10 +44,29 @@ class Game:
                 pass
 
     def update(self):
-        if self.game_over:
+        if self.game_over or self.stage_clear:
             return
 
+        if self.keys.get(pygame.K_t):
+            if self.frame_count < 10500:
+                self.frame_count = 10500
+
         self.frame_count += 1
+
+        if self.frame_count >= 10800 and not self.boss_active and not self.boss_spawned:
+            self.enemies.append(Boss(self.width / 2, -50))
+            self.boss_active = True
+            self.boss_spawned = True
+            audio_manager.play_boss_bgm()
+
+        if self.boss_active:
+            bosses = [e for e in self.enemies if e.type == 'boss']
+            if not bosses:
+                self.boss_active = False
+                self.stage_clear = True
+                self.enemies.clear()
+                self.enemy_bullets.clear()
+
         self.background.update()
         self.player.update(self.keys, self.width, self.height)
 
@@ -105,29 +127,30 @@ class Game:
                 self.player.cooldown_ground = 60
                 audio_manager.play('bomb_launch')
 
-        self.enemy_spawn_timer += 1
-        if self.enemy_spawn_timer > self.enemy_spawn_interval:
-            self.spawn_enemy('air')
-            self.enemy_spawn_timer = 0
-            if self.enemy_spawn_interval > 20:
-                self.enemy_spawn_interval -= 0.5
-                
-        self.ground_spawn_timer += 1
-        if self.ground_spawn_timer > self.ground_spawn_interval:
-            self.spawn_enemy('ground')
-            self.ground_spawn_timer = 0
+        if not self.boss_spawned:
+            self.enemy_spawn_timer += 1
+            if self.enemy_spawn_timer > self.enemy_spawn_interval:
+                self.spawn_enemy('air')
+                self.enemy_spawn_timer = 0
+                if self.enemy_spawn_interval > 20:
+                    self.enemy_spawn_interval -= 0.5
+                    
+            self.ground_spawn_timer += 1
+            if self.ground_spawn_timer > self.ground_spawn_interval:
+                self.spawn_enemy('ground')
+                self.ground_spawn_timer = 0
 
-        # Phaeon spawning logic after 60 seconds (3600 frames)
-        if self.frame_count > 3600:
-            self.phaeon_spawn_timer += 1
-            if self.phaeon_spawn_timer > self.phaeon_spawn_interval:
-                self.phaeon_spawn_timer = 0
-                num_phaeons = random.randint(1, 3)
-                base_x = random.uniform(80, self.width - 80)
-                for i in range(num_phaeons):
-                    spawn_x = max(30, min(self.width - 30, base_x + (i - (num_phaeons - 1) / 2) * 40))
-                    spawn_y = -50 - i * 30
-                    self.enemies.append(Enemy(spawn_x, spawn_y, 'phaeon'))
+            # Phaeon spawning logic after 60 seconds (3600 frames)
+            if self.frame_count > 3600:
+                self.phaeon_spawn_timer += 1
+                if self.phaeon_spawn_timer > self.phaeon_spawn_interval:
+                    self.phaeon_spawn_timer = 0
+                    num_phaeons = random.randint(1, 3)
+                    base_x = random.uniform(80, self.width - 80)
+                    for i in range(num_phaeons):
+                        spawn_x = max(30, min(self.width - 30, base_x + (i - (num_phaeons - 1) / 2) * 40))
+                        spawn_y = -50 - i * 30
+                        self.enemies.append(Enemy(spawn_x, spawn_y, 'phaeon'))
 
         for b in self.bullets: b.update()
         for b in self.bombs:
@@ -151,6 +174,14 @@ class Game:
                         vx = 0.0
                         vy = 6.0
                     self.enemy_bullets.append(EnemyBullet(e.x, e.y, vx, vy))
+                elif e.type == 'boss':
+                    angles = [-40, -20, 0, 20, 40]
+                    bullet_speed = 5.0
+                    for angle in angles:
+                        rad = math.radians(angle)
+                        vx = bullet_speed * math.sin(rad)
+                        vy = bullet_speed * math.cos(rad)
+                        self.enemy_bullets.append(EnemyBullet(e.x, e.y + 20, vx, vy))
                 else:
                     self.enemy_bullets.append(EnemyBullet(e.x, e.y + e.height / 2))
         for eb in self.enemy_bullets: eb.update()
@@ -177,7 +208,7 @@ class Game:
             self.player.draw(surface)
             
         for e in self.enemies:
-            if e.type in ('air', 'phaeon'): e.draw(surface)
+            if e.type in ('air', 'phaeon', 'boss'): e.draw(surface)
             
         for b in self.bullets: b.draw(surface)
         for eb in self.enemy_bullets: eb.draw(surface)
@@ -189,24 +220,34 @@ class Game:
 
     def check_collisions(self):
         for bullet in self.bullets:
-            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
+            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon', 'boss')]:
                 if self.is_colliding(bullet, enemy):
-                    if not isinstance(bullet, (WaveCannon, LaserBullet)):
-                        bullet.marked_for_deletion = True
-                    if not enemy.marked_for_deletion:
-                        enemy.marked_for_deletion = True
-                        rand_drop = random.random()
-                        if rand_drop <= 0.10:
-                            self.items.append(ShieldCapsule(enemy.x, enemy.y))
-                        elif rand_drop <= 0.20:
-                            self.items.append(WeaponCapsule(enemy.x, enemy.y))
-                        elif rand_drop <= 0.30:
-                            self.items.append(LaserCapsule(enemy.x, enemy.y))
-                        if enemy.type == 'phaeon':
-                            self.score += 500
-                        else:
-                            self.score += 100
-                        audio_manager.play('explosion_air')
+                    if enemy.type == 'boss':
+                        if enemy.state in ('ENTER', 'HOVER'):
+                            enemy.hp -= 1
+                            enemy.flash_timer = 5
+                            if not isinstance(bullet, (WaveCannon, LaserBullet)):
+                                bullet.marked_for_deletion = True
+                            if enemy.hp <= 0:
+                                enemy.state = 'DEFEATED'
+                                audio_manager.play('explosion_ground')
+                    else:
+                        if not isinstance(bullet, (WaveCannon, LaserBullet)):
+                            bullet.marked_for_deletion = True
+                        if not enemy.marked_for_deletion:
+                            enemy.marked_for_deletion = True
+                            rand_drop = random.random()
+                            if rand_drop <= 0.10:
+                                self.items.append(ShieldCapsule(enemy.x, enemy.y))
+                            elif rand_drop <= 0.20:
+                                self.items.append(WeaponCapsule(enemy.x, enemy.y))
+                            elif rand_drop <= 0.30:
+                                self.items.append(LaserCapsule(enemy.x, enemy.y))
+                            if enemy.type == 'phaeon':
+                                self.score += 500
+                            else:
+                                self.score += 100
+                            audio_manager.play('explosion_air')
                     
             if isinstance(bullet, WaveCannon):
                 for eb in self.enemy_bullets:
@@ -243,9 +284,10 @@ class Game:
                     elif isinstance(item, LaserCapsule):
                         self.player.has_laser = True
 
-            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon')]:
+            for enemy in [e for e in self.enemies if e.type in ('air', 'phaeon', 'boss')]:
                 if self.is_colliding(self.player, enemy):
-                    enemy.marked_for_deletion = True
+                    if enemy.type != 'boss':
+                        enemy.marked_for_deletion = True
                     self.hit_player()
 
             for eb in self.enemy_bullets:

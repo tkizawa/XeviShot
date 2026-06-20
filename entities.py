@@ -462,3 +462,93 @@ class LaserBullet:
         pygame.draw.line(surface, (0, 200, 0), (int(self.x), int(self.y - self.height / 2)), (int(self.x), int(self.y + self.height / 2)), self.width)
         pygame.draw.line(surface, (255, 255, 255), (int(self.x), int(self.y - self.height / 2 + 3)), (int(self.x), int(self.y + self.height / 2 - 3)), 2)
 
+class Boss:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.type = 'boss'
+        self.width = 80
+        self.height = 80
+        self.max_hp = 50
+        self.hp = self.max_hp
+        self.marked_for_deletion = False
+        self.shoot_timer = 0
+        self.shoot_now = False
+        self.speed = 1.0
+        self.dx = 1.0
+        self.state = 'ENTER' # ENTER, HOVER, DEFEATED
+        self.enter_target_y = 120
+        self.flash_timer = 0
+        self.death_timer = 0
+
+    def update(self):
+        if self.state == 'ENTER':
+            if self.y < self.enter_target_y:
+                self.y += self.speed
+            else:
+                self.state = 'HOVER'
+        elif self.state == 'HOVER':
+            self.x += self.dx * self.speed
+            if self.x < 60 or self.x > 420:
+                self.dx *= -1
+            
+            self.shoot_timer += 1
+            if self.shoot_timer >= 60: # Shoot every 1 second
+                self.shoot_timer = 0
+                self.shoot_now = True
+        elif self.state == 'DEFEATED':
+            self.death_timer += 1
+            if self.death_timer > 90: # 1.5 seconds of explosions
+                self.marked_for_deletion = True
+
+        if self.flash_timer > 0:
+            self.flash_timer -= 1
+
+    def draw(self, surface):
+        # Draw boss body
+        # A sleek metallic base (gray hexagon/polygon)
+        color = (100, 100, 110)
+        if self.flash_timer > 0 and (self.flash_timer // 2) % 2 == 0:
+            color = (255, 255, 255) # Flash white when hit
+            
+        p1 = (self.x, self.y - 40)
+        p2 = (self.x + 40, self.y - 20)
+        p3 = (self.x + 40, self.y + 20)
+        p4 = (self.x, self.y + 40)
+        p5 = (self.x - 40, self.y + 20)
+        p6 = (self.x - 40, self.y - 20)
+        
+        pygame.draw.polygon(surface, color, [p1, p2, p3, p4, p5, p6])
+        pygame.draw.polygon(surface, (50, 50, 60), [p1, p2, p3, p4, p5, p6], 3) # Outline
+        
+        # Draw some details (wing engines/modules)
+        pygame.draw.rect(surface, (80, 0, 0), (self.x - 35, self.y - 15, 10, 30))
+        pygame.draw.rect(surface, (80, 0, 0), (self.x + 25, self.y - 15, 10, 30))
+        
+        # Draw central core
+        core_color = (255, 0, 0)
+        if self.state == 'DEFEATED':
+            core_color = (120, 120, 120)
+        elif (pygame.time.get_ticks() // 200) % 2 == 0:
+            core_color = (255, 100, 0) # Flashing red/orange core
+            
+        pygame.draw.circle(surface, core_color, (int(self.x), int(self.y)), 15)
+        pygame.draw.circle(surface, (255, 255, 255), (int(self.x), int(self.y)), 6) # Core center
+        
+        # Draw HP bar at the top of the screen if the boss is active and not defeated
+        if self.state in ('ENTER', 'HOVER'):
+            # HP bar background
+            pygame.draw.rect(surface, (50, 0, 0), (80, 50, 320, 10))
+            # HP bar fill
+            fill_width = int(320 * (max(0, self.hp) / self.max_hp))
+            pygame.draw.rect(surface, (255, 0, 0), (80, 50, fill_width, 10))
+            pygame.draw.rect(surface, (255, 255, 255), (80, 50, 320, 10), 1)
+
+        # Draw explosions if defeated
+        if self.state == 'DEFEATED':
+            for _ in range(3):
+                ex = self.x + random.uniform(-35, 35)
+                ey = self.y + random.uniform(-35, 35)
+                r = random.randint(10, 25)
+                pygame.draw.circle(surface, (255, random.randint(100, 255), 0), (int(ex), int(ey)), r)
+
