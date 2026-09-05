@@ -1,4 +1,15 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 
+# .NET Build outputs
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Project rule exclusions
+Installer/
+MSIX/

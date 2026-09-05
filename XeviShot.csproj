@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    
+    <!-- アプリケーション情報 -->
+    <Title>XeviShot</Title>
+    <Product>XeviShot</Product>
+    <Company>tkizawa</Company>
+    <Description>レトロ風縦スクロールシューティングゲーム (XeviShot)</Description>
+    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+
+    <!-- バージョン管理規約: 1.0.0.0 から開始 -->
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+
+    <!-- テストプロジェクトフォルダを除外 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);XeviShot.Tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
