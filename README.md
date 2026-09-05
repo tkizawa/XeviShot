@@ -5,10 +5,13 @@
 ## 🚀 起動方法
 
 ### 動作環境
-* .NET 10 (Windows x64) または スタンドアロン実行ファイル
+* Windows x64 または Windows Arm64
+* .NET 10 または スタンドアロン実行ファイル
 
 ### 実行手順
-- **スタンドアロン実行**: `.\Installer\XeviShot_v1.0.0.0_win-x64.exe` を直接ダブルクリックで起動
+- **スタンドアロン実行**: PCの環境（アーキテクチャ）に合わせて以下のいずれかを直接ダブルクリックで起動
+  - **x64 版**: `.\Installer\XeviShot_v1.0.0.0_win-x64.exe`
+  - **Arm64 版**: `.\Installer\XeviShot_v1.0.0.0_win-arm64.exe`
 - **dotnet CLI で実行**:
   ```bash
   dotnet run -c Release
