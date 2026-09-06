@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using XeviShot.Audio;
 
 namespace XeviShot.Entities;
@@ -211,19 +212,59 @@ public class Bomb : Entity
     {
         if (Exploded)
         {
-            float rOuter = 20f + ExplosionTimer;
-            using var brushOrange = new SolidBrush(Color.FromArgb(255, 136, 0));
-            g.FillEllipse(brushOrange, X - rOuter, Y - rOuter, rOuter * 2, rOuter * 2);
+            float rOuter = 20f + ExplosionTimer * 1.5f;
+            using (var outerBrush = new SolidBrush(Color.FromArgb(220, 255, 100, 0)))
+            {
+                g.FillEllipse(outerBrush, X - rOuter, Y - rOuter, rOuter * 2, rOuter * 2);
+            }
 
-            float rInner = 10f + ExplosionTimer * 0.5f;
-            using var brushYellow = new SolidBrush(Color.FromArgb(255, 255, 0));
-            g.FillEllipse(brushYellow, X - rInner, Y - rInner, rInner * 2, rInner * 2);
+            float rMid = 12f + ExplosionTimer;
+            using (var midBrush = new SolidBrush(Color.FromArgb(240, 255, 200, 0)))
+            {
+                g.FillEllipse(midBrush, X - rMid, Y - rMid, rMid * 2, rMid * 2);
+            }
+
+            float rInner = 6f + ExplosionTimer * 0.4f;
+            using (var innerBrush = new SolidBrush(Color.White))
+            {
+                g.FillEllipse(innerBrush, X - rInner, Y - rInner, rInner * 2, rInner * 2);
+            }
         }
         else
         {
-            float currentSize = Math.Max(1f, Size * (1f - Progress * 0.5f));
-            using var brush = new SolidBrush(Color.FromArgb(255, 0, 255));
-            g.FillEllipse(brush, X - currentSize, Y - currentSize, currentSize * 2, currentSize * 2);
+            // 投下高度の立体表現: 空中高くから地面に向かって影が収束する3Dパララックス
+            float altitude = 1.0f - Progress; // 1.0(高空) -> 0.0(着弾)
+            float shadowDistX = 10f * altitude;
+            float shadowDistY = 16f * altitude;
+            float shadowScale = 0.5f + Progress * 0.5f;
+
+            float currentSize = Math.Max(2f, Size * (1f - Progress * 0.4f));
+
+            // 地面に落ちる影
+            using (var shadowBrush = new SolidBrush(Color.FromArgb((int)(110 * Progress + 30), 0, 0, 0)))
+            {
+                g.FillEllipse(shadowBrush,
+                    X + shadowDistX - currentSize * shadowScale,
+                    Y + shadowDistY - currentSize * shadowScale * 0.6f,
+                    currentSize * shadowScale * 2f,
+                    currentSize * shadowScale * 1.2f);
+            }
+
+            // ボム本体（立体球体グラデーション）
+            using (var bombBrush = new LinearGradientBrush(
+                new PointF(X - currentSize * 0.5f, Y - currentSize * 0.5f),
+                new PointF(X + currentSize, Y + currentSize),
+                Color.FromArgb(255, 120, 255),
+                Color.FromArgb(120, 0, 140)))
+            {
+                g.FillEllipse(bombBrush, X - currentSize, Y - currentSize, currentSize * 2, currentSize * 2);
+            }
+
+            // 球体ハイライト
+            using (var hiBrush = new SolidBrush(Color.White))
+            {
+                g.FillEllipse(hiBrush, X - currentSize * 0.45f, Y - currentSize * 0.45f, currentSize * 0.6f, currentSize * 0.5f);
+            }
         }
     }
 }

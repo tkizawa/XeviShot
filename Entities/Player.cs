@@ -185,44 +185,228 @@ public class Player : Entity
             DrawMiniChargeGauge(g, chargeRatio, chargeRatio2, ticks);
         }
 
-        // 2. 自機本体（デルタ戦闘機）
-        PointF[] points =
-        {
-            new(X, Y - Height / 2f),
-            new(X + Width / 2f, Y + Height / 2f),
-            new(X, Y + Height / 4f),
-            new(X - Width / 2f, Y + Height / 2f)
-        };
+        // 2. 自機本体（立体感のあるデルタ戦闘機 Xenon-Ray）
+        DrawSpaceship(g, ticks);
 
-        using (var brush = new SolidBrush(_shipColor))
-        {
-            g.FillPolygon(brush, points);
-        }
-
-        using (var pen = new Pen(Color.White, 1f))
-        {
-            g.DrawPolygon(pen, points);
-        }
-
-        // 3. シールド（周回オービットビット）
+        // 3. シールド（周回オービットビット：立体球体オーブ）
         if (ShieldCount > 0)
         {
-            float shieldRadius = Width / 2f + 8f;
-            using var shieldPen = new Pen(Color.Cyan, 2f);
+            float shieldRadius = Width / 2f + 9f;
+            using var shieldPen = new Pen(Color.FromArgb(140, 0, 240, 255), 1.5f);
+            shieldPen.DashStyle = DashStyle.Dash;
             g.DrawEllipse(shieldPen, X - shieldRadius, Y - shieldRadius, shieldRadius * 2, shieldRadius * 2);
 
-            using var bitBrush = new SolidBrush(Color.White);
             for (int i = 0; i < ShieldCount; i++)
             {
                 double angle = i * (2.0 * Math.PI / ShieldCount) + ticks * 0.005;
                 float hx = (float)(X + Math.Cos(angle) * shieldRadius);
                 float hy = (float)(Y + Math.Sin(angle) * shieldRadius);
-                g.FillEllipse(bitBrush, hx - 3f, hy - 3f, 6f, 6f);
+
+                // 立体球体ビット（外郭グロー、深層シアン、中心ハイライト）
+                using (var glowBrush = new SolidBrush(Color.FromArgb(80, 0, 255, 255)))
+                {
+                    g.FillEllipse(glowBrush, hx - 5f, hy - 5f, 10f, 10f);
+                }
+                using (var baseBrush = new SolidBrush(Color.FromArgb(0, 180, 255)))
+                {
+                    g.FillEllipse(baseBrush, hx - 3.5f, hy - 3.5f, 7f, 7f);
+                }
+                using (var hiBrush = new SolidBrush(Color.White))
+                {
+                    g.FillEllipse(hiBrush, hx - 2f, hy - 2f, 3f, 3f);
+                }
             }
         }
 
         // 4. 前方照準レティクル（対地爆撃用）
         DrawReticle(g);
+    }
+
+    private void DrawSpaceship(Graphics g, long ticks)
+    {
+        // A. 浮遊ドロップシャドウ（地面・背景への投影影）
+        float shadowOffsetX = 7f;
+        float shadowOffsetY = 11f;
+        PointF[] shadowPoints =
+        {
+            new(X + shadowOffsetX, Y + shadowOffsetY - Height * 0.45f),
+            new(X + shadowOffsetX + Width * 0.45f, Y + shadowOffsetY + Height * 0.45f),
+            new(X + shadowOffsetX, Y + shadowOffsetY + Height * 0.2f),
+            new(X + shadowOffsetX - Width * 0.45f, Y + shadowOffsetY + Height * 0.45f)
+        };
+        using (var shadowBrush = new SolidBrush(Color.FromArgb(90, 0, 0, 0)))
+        {
+            g.FillPolygon(shadowBrush, shadowPoints);
+        }
+
+        // B. アフターバーナー（双発スラスター噴射炎 & ノズル）
+        float flameFlicker = (float)(Math.Sin(ticks * 0.05) * 3.0 + Math.Cos(ticks * 0.09) * 2.0);
+        float flameLen = 10f + flameFlicker;
+        float[] engineX = { X - 6.5f, X + 6.5f };
+
+        foreach (float ex in engineX)
+        {
+            float ey = Y + Height * 0.35f;
+
+            // スラスター炎（外側シアン、内側ホワイト）
+            PointF[] outerFlame =
+            {
+                new(ex - 2.5f, ey),
+                new(ex, ey + flameLen),
+                new(ex + 2.5f, ey)
+            };
+            using (var flameBrush = new SolidBrush(Color.FromArgb(220, 0, 220, 255)))
+            {
+                g.FillPolygon(flameBrush, outerFlame);
+            }
+
+            PointF[] innerFlame =
+            {
+                new(ex - 1.2f, ey),
+                new(ex, ey + flameLen * 0.6f),
+                new(ex + 1.2f, ey)
+            };
+            using (var innerFlameBrush = new SolidBrush(Color.White))
+            {
+                g.FillPolygon(innerFlameBrush, innerFlame);
+            }
+
+            // メタリックチタンノズル
+            using var nozzleBrush = new SolidBrush(Color.FromArgb(70, 80, 95));
+            g.FillRectangle(nozzleBrush, ex - 3f, ey - 2f, 6f, 3f);
+            using var nozzleRim = new Pen(Color.FromArgb(140, 160, 180), 0.8f);
+            g.DrawRectangle(nozzleRim, ex - 3f, ey - 2f, 6f, 3f);
+        }
+
+        // C. 多面体装甲（左主翼・右主翼・胴体センターリッジの3D立体シェーディング）
+        PointF nose = new(X, Y - Height * 0.5f);
+        PointF leftWingTip = new(X - Width * 0.5f, Y + Height * 0.45f);
+        PointF rightWingTip = new(X + Width * 0.5f, Y + Height * 0.45f);
+        PointF leftEngineRear = new(X - Width * 0.18f, Y + Height * 0.35f);
+        PointF rightEngineRear = new(X + Width * 0.18f, Y + Height * 0.35f);
+        PointF centerTail = new(X, Y + Height * 0.22f);
+        PointF spineTop = new(X, Y - Height * 0.35f);
+        PointF spineBottom = new(X, Y + Height * 0.18f);
+
+        // 左主翼面（受光面：明るいメタリックシアン）
+        PointF[] leftWing =
+        {
+            nose,
+            spineBottom,
+            leftEngineRear,
+            leftWingTip
+        };
+        using (var leftBrush = new LinearGradientBrush(
+            leftWingTip, nose,
+            Color.FromArgb(0, 180, 240),
+            Color.FromArgb(140, 245, 255)))
+        {
+            g.FillPolygon(leftBrush, leftWing);
+        }
+
+        // 右主翼面（陰影面：深いメタリックシアン・ディープブルー）
+        PointF[] rightWing =
+        {
+            nose,
+            rightWingTip,
+            rightEngineRear,
+            spineBottom
+        };
+        using (var rightBrush = new LinearGradientBrush(
+            nose, rightWingTip,
+            Color.FromArgb(0, 140, 200),
+            Color.FromArgb(0, 75, 130)))
+        {
+            g.FillPolygon(rightBrush, rightWing);
+        }
+
+        // 中央胴体リッジ（機首から伸びる立体稜線）
+        PointF[] leftSpine =
+        {
+            nose,
+            new(X - 3.5f, Y - Height * 0.05f),
+            new(X - 3f, spineBottom.Y),
+            centerTail
+        };
+        using (var leftSpineBrush = new SolidBrush(Color.FromArgb(180, 255, 255)))
+        {
+            g.FillPolygon(leftSpineBrush, leftSpine);
+        }
+
+        PointF[] rightSpine =
+        {
+            nose,
+            centerTail,
+            new(X + 3f, spineBottom.Y),
+            new(X + 3.5f, Y - Height * 0.05f)
+        };
+        using (var rightSpineBrush = new SolidBrush(Color.FromArgb(0, 160, 210)))
+        {
+            g.FillPolygon(rightSpineBrush, rightSpine);
+        }
+
+        // 翼端ウイングレット（立体折り返しエッジ）
+        using (var wingletBrush = new SolidBrush(Color.FromArgb(200, 255, 255)))
+        {
+            PointF[] leftTip =
+            {
+                leftWingTip,
+                new(leftWingTip.X + 3f, leftWingTip.Y - 5f),
+                new(leftWingTip.X + 4f, leftWingTip.Y)
+            };
+            g.FillPolygon(wingletBrush, leftTip);
+        }
+        using (var wingletDarkBrush = new SolidBrush(Color.FromArgb(0, 100, 160)))
+        {
+            PointF[] rightTip =
+            {
+                rightWingTip,
+                new(rightWingTip.X - 4f, rightWingTip.Y),
+                new(rightWingTip.X - 3f, rightWingTip.Y - 5f)
+            };
+            g.FillPolygon(wingletDarkBrush, rightTip);
+        }
+
+        // 外郭メタリック稜線ハイライト
+        using (var edgeHiPen = new Pen(Color.FromArgb(220, 255, 255, 255), 1f))
+        {
+            g.DrawLine(edgeHiPen, nose, leftWingTip);
+            g.DrawLine(edgeHiPen, nose, centerTail);
+        }
+        using (var edgeShadowPen = new Pen(Color.FromArgb(180, 0, 50, 90), 1f))
+        {
+            g.DrawLine(edgeShadowPen, nose, rightWingTip);
+            g.DrawLine(edgeShadowPen, rightWingTip, rightEngineRear);
+            g.DrawLine(edgeShadowPen, leftWingTip, leftEngineRear);
+        }
+
+        // D. 3Dコックピットキャノピー（流線型ガラス & スペキュラハイライト）
+        float canopyW = 6f;
+        float canopyH = 12f;
+        float canopyX = X - canopyW / 2f;
+        float canopyY = Y - Height * 0.28f;
+
+        // キャノピー枠
+        using (var framePen = new Pen(Color.FromArgb(30, 45, 65), 1.2f))
+        {
+            g.DrawEllipse(framePen, canopyX, canopyY, canopyW, canopyH);
+        }
+
+        // キャノピーガラス（深青からエメラルドへのグラデーション）
+        using (var canopyBrush = new LinearGradientBrush(
+            new PointF(canopyX, canopyY),
+            new PointF(canopyX + canopyW, canopyY + canopyH),
+            Color.FromArgb(0, 240, 220),
+            Color.FromArgb(5, 30, 70)))
+        {
+            g.FillEllipse(canopyBrush, canopyX, canopyY, canopyW, canopyH);
+        }
+
+        // ガラスの曲面反射スペキュラハイライト
+        using (var glassHiBrush = new SolidBrush(Color.FromArgb(230, 255, 255, 255)))
+        {
+            g.FillEllipse(glassHiBrush, canopyX + 1.2f, canopyY + 1.5f, 2.2f, 4.5f);
+        }
     }
 
     private void DrawReticle(Graphics g)
