@@ -62,14 +62,22 @@ public class Bullet : Entity
 /// </summary>
 public class LaserBullet : Entity
 {
+    public int Level { get; set; } = 1;
     public float Vx { get; set; }
     public float Vy { get; set; }
 
-    public LaserBullet(float x, float y, float vx = 0f, float vy = -18f)
+    public LaserBullet(float x, float y, float vx = 0f, float vy = -18f, int level = 1)
     {
         X = x;
         Y = y;
-        Width = 6f;
+        Level = Math.Clamp(level, 1, 3);
+        Width = Level switch
+        {
+            1 => 6f,
+            2 => 14f,
+            3 => 24f,
+            _ => 6f
+        };
         Height = 60f;
         Vx = vx;
         Vy = vy;
@@ -90,12 +98,24 @@ public class LaserBullet : Entity
         // 外側の緑の発光
         using (var greenPen = new Pen(Color.FromArgb(0, 220, 0), Width))
         {
+            greenPen.StartCap = LineCap.Round;
+            greenPen.EndCap = LineCap.Round;
             g.DrawLine(greenPen, X, Y - Height / 2f, X, Y + Height / 2f);
         }
 
         // 内側の白色コア
-        using (var whitePen = new Pen(Color.White, 2f))
+        float coreWidth = Level switch
         {
+            1 => 2f,
+            2 => 5f,
+            3 => 9f,
+            _ => 2f
+        };
+
+        using (var whitePen = new Pen(Color.White, coreWidth))
+        {
+            whitePen.StartCap = LineCap.Round;
+            whitePen.EndCap = LineCap.Round;
             g.DrawLine(whitePen, X, Y - Height / 2f + 3f, X, Y + Height / 2f - 3f);
         }
     }

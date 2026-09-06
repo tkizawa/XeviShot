@@ -383,7 +383,8 @@ public class GameForm : Form
         if (_game.Player.HasLaser)
         {
             using var laserBrush = new SolidBrush(Color.LimeGreen);
-            g.DrawString("[LASER]", _smallFont, laserBrush, 20f, VirtualHeight - 30f);
+            string laserText = _game.Player.WeaponLevel > 1 ? $"[LASER LV.{_game.Player.WeaponLevel}]" : "[LASER]";
+            g.DrawString(laserText, _smallFont, laserBrush, 20f, VirtualHeight - 30f);
         }
         else if (_game.Player.WeaponLevel > 1)
         {

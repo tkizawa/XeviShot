@@ -123,6 +123,41 @@ public class GameLogicTests
         game.Items.Add(weapon3);
         game.Update(input);
         Assert.AreEqual(2, game.Player.WeaponLevel, "通常弾モードで取得した場合はレベル2へアップすること");
+
+        // 通常弾モード → レーザーカプセル1つ目取得: レーザー有効化 & WEAPON LEVEL 1
+        var laser1 = new LaserCapsule(game.Player.X, game.Player.Y);
+        game.Items.Add(laser1);
+        game.Update(input);
+        Assert.IsTrue(game.Player.HasLaser, "レーザー有効化");
+        Assert.AreEqual(1, game.Player.WeaponLevel, "レーザー1つ目でLEVEL 1");
+
+        // レーザーモード → レーザーカプセル2つ目取得: WEAPON LEVEL 2
+        var laser2 = new LaserCapsule(game.Player.X, game.Player.Y);
+        game.Items.Add(laser2);
+        game.Update(input);
+        Assert.IsTrue(game.Player.HasLaser);
+        Assert.AreEqual(2, game.Player.WeaponLevel, "レーザー2つ目でLEVEL 2");
+
+        // レーザーモード → レーザーカプセル3つ目取得: WEAPON LEVEL 3
+        var laser3 = new LaserCapsule(game.Player.X, game.Player.Y);
+        game.Items.Add(laser3);
+        game.Update(input);
+        Assert.IsTrue(game.Player.HasLaser);
+        Assert.AreEqual(3, game.Player.WeaponLevel, "レーザー3つ目でLEVEL 3");
+
+        // レーザーモード → レーザーカプセル4つ目取得: WEAPON LEVEL 3維持 (最大3)
+        var laser4 = new LaserCapsule(game.Player.X, game.Player.Y);
+        game.Items.Add(laser4);
+        game.Update(input);
+        Assert.IsTrue(game.Player.HasLaser);
+        Assert.AreEqual(3, game.Player.WeaponLevel, "レーザー4つ目でも最大LEVEL 3維持");
+
+        // レーザー弾の幅の検証
+        var lb1 = new LaserBullet(0, 0, level: 1);
+        var lb2 = new LaserBullet(0, 0, level: 2);
+        var lb3 = new LaserBullet(0, 0, level: 3);
+        Assert.IsTrue(lb2.Width > lb1.Width, "Lv2レーザーはLv1より幅が太いこと");
+        Assert.IsTrue(lb3.Width > lb2.Width, "Lv3レーザーはLv2よりさらに幅が太いこと");
     }
 
     [TestMethod]
@@ -229,5 +264,41 @@ public class GameLogicTests
 
         Assert.IsTrue(game.StageClear, "ボス撃破でステージクリアになること");
         Assert.IsFalse(game.BossActive);
+    }
+
+    [TestMethod]
+    public void TestBackgroundProgression()
+    {
+        var bg = new Background(480, 640);
+
+        // 1分経過まで: 森と川
+        Assert.AreEqual(BackgroundTheme.ForestAndRiver, Background.GetTheme(0));
+        Assert.AreEqual(BackgroundTheme.ForestAndRiver, Background.GetTheme(1800));
+        Assert.AreEqual(BackgroundTheme.ForestAndRiver, Background.GetTheme(3599));
+
+        // 2分経過まで: 街 (3600f〜7199f)
+        Assert.AreEqual(BackgroundTheme.City, Background.GetTheme(3600));
+        Assert.AreEqual(BackgroundTheme.City, Background.GetTheme(5400));
+        Assert.AreEqual(BackgroundTheme.City, Background.GetTheme(7199));
+
+        // 2分50秒まで: 要塞前哨基地 (7200f〜10199f)
+        Assert.AreEqual(BackgroundTheme.Outpost, Background.GetTheme(7200));
+        Assert.AreEqual(BackgroundTheme.Outpost, Background.GetTheme(9000));
+        Assert.AreEqual(BackgroundTheme.Outpost, Background.GetTheme(10199));
+
+        // 2分50秒以降: 敵要塞 (10200f〜)
+        Assert.AreEqual(BackgroundTheme.Fortress, Background.GetTheme(10200));
+        Assert.AreEqual(BackgroundTheme.Fortress, Background.GetTheme(10800));
+
+        // UpdateとDrawが例外なく正常に実行できること
+        using var bmp = new System.Drawing.Bitmap(480, 640);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+
+        int[] testFrames = { 0, 3600, 7200, 10200, 10800 };
+        foreach (int frame in testFrames)
+        {
+            bg.Update(frame);
+            bg.Draw(g);
+        }
     }
 }

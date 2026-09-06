@@ -236,6 +236,8 @@ public class InputManager
 
     // デバッグ・スキップ
     public bool BossTestKey => IsKeyDown(Keys.T);
+    public bool CityTestKey => IsKeyDown(Keys.D1) || IsKeyDown(Keys.NumPad1);
+    public bool FortressTestKey => IsKeyDown(Keys.D2) || IsKeyDown(Keys.NumPad2);
 
     // 任意の入力があったか
     public bool AnyActionPressed => _pressedKeys.Count > 0 || GamepadAnyButton;

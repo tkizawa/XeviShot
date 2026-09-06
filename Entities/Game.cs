@@ -60,13 +60,18 @@ public class Game
     {
         if (GameOver || StageClear) return;
 
-        // デバッグ用: Tキーでボス出現直前へスキップ
-        if (input.BossTestKey)
+        // デバッグ用: 1キーで街(1分)、2キーで敵要塞(2分50秒)、Tキーでボス直前(2分55秒)へスキップ
+        if (input.CityTestKey && _frameCount < 3600)
         {
-            if (_frameCount < 10500)
-            {
-                _frameCount = 10500;
-            }
+            _frameCount = 3600;
+        }
+        else if (input.FortressTestKey && _frameCount < 10200)
+        {
+            _frameCount = 10200;
+        }
+        else if (input.BossTestKey && _frameCount < 10500)
+        {
+            _frameCount = 10500;
         }
 
         _frameCount++;
@@ -107,7 +112,7 @@ public class Game
             }
         }
 
-        Background.Update();
+        Background.Update(_frameCount);
         Player.UpdateInput(input, Width, Height);
 
         // 自機の振動トリガー処理
@@ -131,7 +136,7 @@ public class Game
             Player.ShootNormal = false;
             if (Player.HasLaser)
             {
-                LaserBullets.Add(new LaserBullet(Player.X, Player.Y - Player.Height / 2f));
+                LaserBullets.Add(new LaserBullet(Player.X, Player.Y - Player.Height / 2f, level: Player.WeaponLevel));
                 Player.CooldownAir = 12;
             }
             else
@@ -452,9 +457,17 @@ public class Game
                     }
                     else if (item is LaserCapsule)
                     {
-                        // 通常弾モード → レーザーカプセル: レーザー有効化して WEAPON LEVEL 1 にリセット
-                        Player.HasLaser = true;
-                        Player.WeaponLevel = 1;
+                        if (!Player.HasLaser)
+                        {
+                            // 通常弾モード → レーザーカプセル: レーザー有効化して WEAPON LEVEL 1 に初期化
+                            Player.HasLaser = true;
+                            Player.WeaponLevel = 1;
+                        }
+                        else
+                        {
+                            // レーザーモード → レーザーカプセル: レベルアップ (最大3)
+                            Player.WeaponLevel = Math.Min(3, Player.WeaponLevel + 1);
+                        }
                     }
                 }
             }
